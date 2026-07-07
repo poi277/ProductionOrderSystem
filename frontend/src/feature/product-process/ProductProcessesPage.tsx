@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DataListTable from "../common/DataListTable";
 import ListToolbar from "../common/ListToolbar";
 import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
+import type { OrderProcessForm } from "../ordersidebar/OrderProcessFormCard";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
 import type { Order } from "../order/OrdersTypes";
@@ -21,6 +22,26 @@ type ProductProcess = {
   startedAt: string;
 };
 
+type ProductProcessResponse = {
+  productQr: string;
+  productionId: string | null;
+  productName: string | null;
+  lot: string | null;
+  processName: string | null;
+  processSequence: number | null;
+  status: string | null;
+  shipped: boolean | null;
+  startedAt: string | null;
+};
+
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
+
+const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
+
 type SortKey = keyof Omit<ProductProcess, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
@@ -32,6 +53,7 @@ const sortButtons: ListOption<SortKey>[] = [
   { label: "공정순서", key: "processSequence" },
   { label: "상태", key: "status" },
   { label: "출하대상", key: "isShipmentTarget" },
+  { label: "시작일시", key: "startedAt" },
 ];
 
 const processColumns: DataListColumn<ProductProcess>[] = [
@@ -55,73 +77,86 @@ const processColumns: DataListColumn<ProductProcess>[] = [
   { align: "center", header: "시작일시", key: "startedAt", render: (row) => row.startedAt },
 ];
 
-const processRows: ProductProcess[] = [
-  {
-    id: 1,
-    productionOrderNo: "PRD-20260706-001",
-    productQr: "QR-LS4C-0001",
-    productName: "Leak Sensor Point-4C",
-    lotNo: "LOT-20260706-A",
-    processName: "자재 준비",
-    processSequence: "1",
-    status: "완료",
-    isShipmentTarget: "N",
-    startedAt: "2026.07.06 09:00",
-  },
-  {
-    id: 2,
-    productionOrderNo: "PRD-20260706-001",
-    productQr: "QR-LS4C-0001",
-    productName: "Leak Sensor Point-4C",
-    lotNo: "LOT-20260706-A",
-    processName: "조립",
-    processSequence: "2",
-    status: "진행중",
-    isShipmentTarget: "N",
-    startedAt: "2026.07.06 10:40",
-  },
-  {
-    id: 3,
-    productionOrderNo: "PRD-20260706-002",
-    productQr: "QR-ECS200-0002",
-    productName: "ECS200A-ORGANIC-000A",
-    lotNo: "LOT-20260706-B",
-    processName: "검사",
-    processSequence: "3",
-    status: "대기",
-    isShipmentTarget: "Y",
-    startedAt: "-",
-  },
-  {
-    id: 4,
-    productionOrderNo: "PRD-20260703-004",
-    productQr: "QR-DULK322-0004",
-    productName: "DU-LK322-NPN-10-S1",
-    lotNo: "LOT-20260703-C",
-    processName: "최종검수",
-    processSequence: "4",
-    status: "완료",
-    isShipmentTarget: "Y",
-    startedAt: "2026.07.03 14:00",
-  },
-];
-
 export default function ProductProcessesPage() {
+  const [processes, setProcesses] = useState<ProductProcess[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
   const [checkedRowIds, setCheckedRowIds] = useState<number[]>([]);
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
   const [searchField, setSearchField] = useState<SortKey>("productQr");
   const [searchText, setSearchText] = useState("");
   const {
-    clearOrderSidebarSelection,
     closeOrderSidebar,
     openOrderDetailSidebar,
-    rightPanelMode,
-    selectedOrder,
   } = useOrderSidebar();
 
-  const searchOptions = Array.from(new Set(processRows.map((row) => String(row[searchField]))));
-  const filteredRows = processRows.filter((row) =>
+  useEffect(() => {
+    const loadProcesses = async () => {
+      try {
+        const response = await fetch(`${orderApiBaseUrl}/product-processes`);
+
+        if (!response.ok) {
+          setLoadError("생산현황 목록을 불러오지 못했습니다.");
+          setProcesses([]);
+          return;
+        }
+
+        const result = (await response.json()) as ApiResponse<ProductProcessResponse[]>;
+        setLoadError("");
+        setProcesses(result.data.map(toProductProcessRowFromApi));
+      } catch {
+        setLoadError("생산현황 목록을 불러오지 못했습니다.");
+        setProcesses([]);
+      }
+    };
+
+    void loadProcesses();
+  }, []);
+
+  useEffect(() => {
+    const handleCreate = (event: Event) => {
+      const createdProcess = (event as CustomEvent<OrderProcessForm>).detail;
+
+      setProcesses((current) =>
+        [toProductProcessRow(createdProcess, 0), ...current].map((row, index) => ({ ...row, id: index + 1 })),
+      );
+    };
+
+    const handleUpdate = (event: Event) => {
+      const { processId, order: updatedProcess } = (
+        event as CustomEvent<{ processId: number; order: OrderProcessForm }>
+      ).detail;
+
+      setProcesses((current) =>
+        current.map((row) =>
+          row.id === processId ? { ...toProductProcessRow(updatedProcess, row.id - 1), id: row.id } : row,
+        ),
+      );
+    };
+
+    const handleDelete = (event: Event) => {
+      const deletedProcessId = (event as CustomEvent<number>).detail;
+
+      setProcesses((current) =>
+        current.filter((row) => row.id !== deletedProcessId).map((row, index) => ({ ...row, id: index + 1 })),
+      );
+      setSelectedRowId(null);
+      closeOrderSidebar();
+    };
+
+    window.addEventListener("product-process-created", handleCreate);
+    window.addEventListener("product-process-updated", handleUpdate);
+    window.addEventListener("product-process-deleted", handleDelete);
+
+    return () => {
+      window.removeEventListener("product-process-created", handleCreate);
+      window.removeEventListener("product-process-updated", handleUpdate);
+      window.removeEventListener("product-process-deleted", handleDelete);
+    };
+  }, [closeOrderSidebar]);
+
+  const searchOptions = Array.from(new Set(processes.map((row) => String(row[searchField]))));
+  const filteredRows = processes.filter((row) =>
     String(row[searchField]).toLowerCase().includes(searchText.toLowerCase()),
   );
   const sortedRows = sortRows(filteredRows, sortConditions);
@@ -137,12 +172,6 @@ export default function ProductProcessesPage() {
   };
 
   const handleSelectRow = (row: ProductProcess) => {
-    if (selectedRowId === row.id && selectedOrder?.orderNo === row.productionOrderNo && rightPanelMode === "detail") {
-      setSelectedRowId(null);
-      clearOrderSidebarSelection();
-      return;
-    }
-
     setSelectedRowId(row.id);
     openOrderDetailSidebar(toSidebarOrder(row));
   };
@@ -169,6 +198,7 @@ export default function ProductProcessesPage() {
           onRowClick={handleSelectRow}
           rows={sortedRows}
           selectedRowId={selectedRowId}
+          emptyMessage={loadError || "리스트가 비어있습니다."}
         />
       </section>
     </main>
@@ -197,8 +227,16 @@ function updateSortConditions(current: SortCondition<SortKey>[], key: SortKey) {
 function toSidebarOrder(row: ProductProcess): Order {
   return {
     id: row.id,
+    detailType: "process",
     orderNo: row.productionOrderNo,
     orderDate: row.startedAt,
+    productionOrderNo: row.productionOrderNo,
+    productQr: row.productQr,
+    lotNo: row.lotNo,
+    processName: row.processName,
+    processSequence: row.processSequence,
+    isShipmentTarget: row.isShipmentTarget,
+    startedAt: row.startedAt,
     customer: "-",
     product: row.productName,
     quantity: row.processSequence,
@@ -207,4 +245,57 @@ function toSidebarOrder(row: ProductProcess): Order {
     status: row.status,
     memo: `QR ${row.productQr}, LOT ${row.lotNo}, process ${row.processName}, shipment target ${row.isShipmentTarget}`,
   };
+}
+
+function toProductProcessRow(process: OrderProcessForm, index: number): ProductProcess {
+  return {
+    id: index + 1,
+    productionOrderNo: process.productionOrderNo,
+    productQr: process.productQr,
+    productName: process.productName || "-",
+    lotNo: process.lotNo || "-",
+    processName: process.processName || "-",
+    processSequence: process.processSequence || "1",
+    status: process.status,
+    isShipmentTarget: process.isShipmentTarget,
+    startedAt: toDisplayDateTime(process.startedAt),
+  };
+}
+
+function toProductProcessRowFromApi(process: ProductProcessResponse, index: number): ProductProcess {
+  return {
+    id: index + 1,
+    productionOrderNo: process.productionId ?? "-",
+    productQr: process.productQr,
+    productName: process.productName ?? "-",
+    lotNo: process.lot ?? "-",
+    processName: process.processName ?? "-",
+    processSequence: String(process.processSequence ?? 1),
+    status: toProcessStatusLabel(process.status),
+    isShipmentTarget: process.shipped ? "Y" : "N",
+    startedAt: toDisplayDateTime(process.startedAt ?? ""),
+  };
+}
+
+function toProcessStatusLabel(status: string | null) {
+  switch (status) {
+    case "WAITING":
+      return "대기";
+    case "IN_PROGRESS":
+      return "진행중";
+    case "COMPLETED":
+      return "완료";
+    case "DEFECTIVE":
+      return "불량";
+    default:
+      return status ?? "-";
+  }
+}
+
+function toDisplayDateTime(value: string) {
+  if (!value) {
+    return "-";
+  }
+
+  return value.replace("T", " ").replaceAll("-", ".");
 }

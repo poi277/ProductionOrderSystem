@@ -1,119 +1,166 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
+import OrderPurchaseFormCard from "./OrderPurchaseFormCard";
+import type { OrderPurchaseForm } from "./OrderPurchaseFormCard";
 
 type OrderCreatePanelProps = {
   onCancel: () => void;
-  onSave: (form: {
-    customer: string;
-    product: string;
-    quantity: string;
-    unitPrice: string;
-    dueDate: string;
-    memo: string;
-  }) => void;
+  onSave: (form: OrderPurchaseForm) => void;
 };
 
-const initialForm = {
-  customer: "",
-  product: "",
-  quantity: "",
-  unitPrice: "",
-  dueDate: "",
-  memo: "",
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
 };
+
+type OrderPurchaseResponse = {
+  purchaseId: string;
+  customer: string | null;
+  productName: string | null;
+  quantity: number | null;
+  price: number | null;
+  purchaseDate: string | null;
+  dueDate: string | null;
+  status: string | null;
+  note: string | null;
+};
+
+const orderApiUrl = process.env.NEXT_PUBLIC_ORDER_API_URL ?? "http://localhost:8080/order/post";
+
+const text = {
+  cancel: "\ucde8\uc18c",
+  saveError: "\ubc1c\uc8fc\uc11c\u0020\uc800\uc7a5\uc5d0\u0020\uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4\u002e",
+  saveSuccess:
+    "\ubc1c\uc8fc\uc11c\uac00\u0020\ubc31\uc5d4\ub4dc\uc5d0\u0020\uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4\u002e",
+  saveUnknownError:
+    "\ubc1c\uc8fc\uc11c\u0020\uc800\uc7a5\u0020\uc911\u0020\uc624\ub958\uac00\u0020\ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4\u002e",
+  submit: "\uc81c\ucd9c\ud558\uae30",
+  submitting: "\uc81c\ucd9c\u0020\uc911",
+  title: "\uc0c8\u0020\ubc1c\uc8fc\uc11c\u0020\uc785\ub825",
+};
+
+function createPurchaseId() {
+  const now = new Date();
+  const date = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("");
+  const sequence = String(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()).padStart(5, "0");
+
+  return `PO-${date}-${sequence}`;
+}
+
+function getTodayDate() {
+  const now = new Date();
+
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+}
 
 export default function OrderCreatePanel({ onCancel, onSave }: OrderCreatePanelProps) {
-  const [form, setForm] = useState(initialForm);
+  const initialForm = useMemo(
+    () => ({
+      purchaseId: createPurchaseId(),
+      orderDate: getTodayDate(),
+      customer: "",
+      product: "",
+      quantity: "",
+      unitPrice: "",
+      dueDate: "",
+      memo: "",
+      status: "INSTRUCTION",
+    }),
+    [],
+  );
+  const [form, setForm] = useState<OrderPurchaseForm>(initialForm);
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
+  const [submitMessage, setSubmitMessage] = useState("");
 
-  const updateForm = (key: keyof typeof form, value: string) => {
+  const updateForm = (key: keyof OrderPurchaseForm, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitStatus("saving");
+    setSubmitMessage("");
+
+    try {
+      const response = await fetch(orderApiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          purchaseId: form.purchaseId,
+          customer: form.customer,
+          productName: form.product,
+          quantity: Number(form.quantity),
+          unitPrice: form.unitPrice ? Number(form.unitPrice) : null,
+          purchaseDate: form.orderDate,
+          dueDate: form.dueDate,
+          status: form.status,
+          note: form.memo,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(text.saveError);
+      }
+
+      const result = (await response.json()) as ApiResponse<OrderPurchaseResponse>;
+
+      setSubmitStatus("success");
+      setSubmitMessage(text.saveSuccess);
+      window.dispatchEvent(new CustomEvent<OrderPurchaseResponse>("order-purchase-created", { detail: result.data }));
+      onSave(form);
+      setForm({ ...initialForm, purchaseId: createPurchaseId() });
+    } catch (error) {
+      setSubmitStatus("error");
+      setSubmitMessage(error instanceof Error ? error.message : text.saveUnknownError);
+    }
+  };
+
   return (
-    <form
-      className="flex min-h-[360px] flex-col gap-4 px-5 py-5 lg:min-h-screen"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSave(form);
-      }}
-    >
-      <header>
-        <p className="text-sm font-bold text-[#1f4f9a]">주문 생성</p>
-        <h2 className="mt-1 text-2xl font-bold">새 발주서 입력</h2>
-      </header>
+    <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleSubmit}>
+      <OrderPurchaseFormCard
+        eyebrow=""
+        form={form}
+        onChange={updateForm}
+        showOrderDate
+        showStatus
+        title={text.title}
+      />
 
-      <div className="rounded-xl bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-4">
-          <Field label="고객사">
-            <input
-              className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#2f80ed]"
-              onChange={(event) => updateForm("customer", event.target.value)}
-              value={form.customer}
-            />
-          </Field>
-          <Field label="품명">
-            <input
-              className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#2f80ed]"
-              onChange={(event) => updateForm("product", event.target.value)}
-              value={form.product}
-            />
-          </Field>
-          <Field label="발주수량">
-            <input
-              className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#2f80ed]"
-              onChange={(event) => updateForm("quantity", event.target.value)}
-              type="number"
-              value={form.quantity}
-            />
-          </Field>
-          <Field label="단가">
-            <input
-              className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#2f80ed]"
-              onChange={(event) => updateForm("unitPrice", event.target.value)}
-              type="number"
-              value={form.unitPrice}
-            />
-          </Field>
-          <Field label="납기">
-            <input
-              className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#2f80ed]"
-              onChange={(event) => updateForm("dueDate", event.target.value)}
-              type="date"
-              value={form.dueDate}
-            />
-          </Field>
-          <Field label="메모">
-            <textarea
-              className="min-h-28 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[#2f80ed]"
-              onChange={(event) => updateForm("memo", event.target.value)}
-              value={form.memo}
-            />
-          </Field>
-        </div>
-      </div>
-
-      <div className="mt-auto flex gap-2">
-        <button className="h-10 flex-1 rounded-lg bg-[#143f80] text-sm font-bold text-white" type="submit">
-          저장
+      <div className="flex gap-2">
+        <button
+          className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+          disabled={submitStatus === "saving"}
+          type="submit"
+        >
+          {submitStatus === "saving" ? text.submitting : text.submit}
         </button>
         <button
-          className="h-10 flex-1 rounded-lg border border-slate-200 bg-white text-sm font-bold text-slate-500"
+          className="h-8 flex-1 rounded-md border border-slate-200 bg-white text-xs font-bold text-slate-500"
           onClick={onCancel}
           type="button"
         >
-          취소
+          {text.cancel}
         </button>
       </div>
-    </form>
-  );
-}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-2 text-sm font-bold text-slate-600">
-      {label}
-      {children}
-    </label>
+      {submitMessage && (
+        <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
+          {submitMessage}
+        </p>
+      )}
+    </form>
   );
 }

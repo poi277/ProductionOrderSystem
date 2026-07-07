@@ -2,10 +2,11 @@
 
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
-import type { Order, RightPanelMode } from "../order/OrdersTypes";
+import type { Order, RightPanelMode, SidebarFormType } from "../order/OrdersTypes";
 import OrderRightPanel from "./OrderRightPanel";
 
 type OrderForm = {
+  purchaseId: string;
   customer: string;
   product: string;
   quantity: string;
@@ -16,19 +17,21 @@ type OrderForm = {
 
 type OrderSidebarContextValue = {
   selectedOrder: Order | null;
+  sidebarFormType: SidebarFormType;
   rightPanelMode: RightPanelMode;
   isRightPanelOpen: boolean;
   closeOrderSidebar: () => void;
   clearOrderSidebarSelection: () => void;
-  openCreateOrderSidebar: () => void;
+  openCreateOrderSidebar: (formType?: SidebarFormType) => void;
   openOrderDetailSidebar: (order: Order) => void;
-  setOrderSidebarMode: (mode: RightPanelMode) => void;
+  setOrderSidebarMode: (mode: RightPanelMode, formType?: SidebarFormType) => void;
 };
 
 const OrderSidebarContext = createContext<OrderSidebarContextValue | null>(null);
 
 export function OrderSidebarProvider({ children }: { children: ReactNode }) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [sidebarFormType, setSidebarFormType] = useState<SidebarFormType>("purchase");
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>("detail");
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
 
@@ -38,28 +41,34 @@ export function OrderSidebarProvider({ children }: { children: ReactNode }) {
 
   const clearOrderSidebarSelection = () => {
     setSelectedOrder(null);
-    setIsRightPanelOpen(false);
-  };
-
-  const openOrderDetailSidebar = (order: Order) => {
-    setSelectedOrder(order);
     setRightPanelMode("detail");
     setIsRightPanelOpen(true);
   };
 
-  const openCreateOrderSidebar = () => {
+  const openOrderDetailSidebar = (order: Order) => {
+    setSelectedOrder(order);
+    setSidebarFormType(order.detailType ?? "purchase");
+    setRightPanelMode("detail");
+    setIsRightPanelOpen(true);
+  };
+
+  const openCreateOrderSidebar = (formType: SidebarFormType = "purchase") => {
+    setSidebarFormType(formType);
     setRightPanelMode("create");
     setIsRightPanelOpen(true);
   };
 
-  const setOrderSidebarMode = (mode: RightPanelMode) => {
+  const setOrderSidebarMode = (mode: RightPanelMode, formType?: SidebarFormType) => {
+    if (formType) {
+      setSidebarFormType(formType);
+    }
+
     setRightPanelMode(mode);
     setIsRightPanelOpen(true);
   };
 
   const handleSaveCreate = (form: OrderForm) => {
-    console.log("주문 생성 입력값", form);
-    setRightPanelMode("detail");
+    console.log("\ubc1c\uc8fc\uc11c\u0020\uc0dd\uc131\u0020\uc785\ub825\uac12", form);
     setIsRightPanelOpen(true);
   };
 
@@ -67,6 +76,7 @@ export function OrderSidebarProvider({ children }: { children: ReactNode }) {
     <OrderSidebarContext.Provider
       value={{
         selectedOrder,
+        sidebarFormType,
         rightPanelMode,
         isRightPanelOpen,
         closeOrderSidebar,
@@ -86,6 +96,7 @@ export function OrderSidebarProvider({ children }: { children: ReactNode }) {
         onSaveCreate={handleSaveCreate}
         onSetMode={setOrderSidebarMode}
         selectedOrder={selectedOrder}
+        sidebarFormType={sidebarFormType}
       />
     </OrderSidebarContext.Provider>
   );

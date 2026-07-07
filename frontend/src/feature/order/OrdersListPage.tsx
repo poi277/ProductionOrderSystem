@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import DataListTable from "../common/DataListTable";
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
@@ -19,63 +20,70 @@ type SortKey =
   | "status"
   | "memo";
 
+type OrderPurchaseResponse = {
+  purchaseId: string;
+  customer: string | null;
+  productName: string | null;
+  quantity: number | null;
+  price: number | null;
+  purchaseDate: string | null;
+  dueDate: string | null;
+  status: string | null;
+  note: string | null;
+};
+
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
+
+type UpdatedOrderEvent = {
+  previousOrderNo: string;
+  order: OrderPurchaseResponse;
+};
+
+const orderListApiUrl = process.env.NEXT_PUBLIC_ORDER_LIST_API_URL ?? "http://localhost:8080/order";
+
+const text = {
+  customer: "\uace0\uac1d\uc0ac",
+  dueDate: "\ub0a9\uae30",
+  empty: "\ub4f1\ub85d\ub41c\u0020\ubc1c\uc8fc\uc11c\uac00\u0020\uc5c6\uc2b5\ub2c8\ub2e4\u002e",
+  loadError: "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\uc744\u0020\uc870\ud68c\ud558\uc9c0\u0020\ubabb\ud588\uc2b5\ub2c8\ub2e4\u002e",
+  loading: "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\uc744\u0020\ubd88\ub7ec\uc624\ub294\u0020\uc911\uc785\ub2c8\ub2e4\u002e",
+  memo: "\ube44\uace0",
+  orderDate: "\ubc1c\uc8fc\uc77c\uc790",
+  orderNo: "\ubc1c\uc8fc\ubc88\ud638",
+  product: "\ud488\uba85",
+  quantity: "\ubc1c\uc8fc\uc218\ub7c9",
+  status: "\uc0c1\ud0dc",
+  unitPrice: "\ub2e8\uac00",
+  unknownLoadError:
+    "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\u0020\uc870\ud68c\u0020\uc911\u0020\uc624\ub958\uac00\u0020\ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4\u002e",
+};
+
 const sortButtons: ListOption<SortKey>[] = [
-  { label: "발주번호", key: "orderNo" },
-  { label: "발주일자", key: "orderDate" },
-  { label: "고객사", key: "customer" },
-  { label: "품명", key: "product" },
-  { label: "발주수량", key: "quantity" },
-  { label: "단가", key: "unitPrice" },
-  { label: "납기", key: "dueDate" },
-  { label: "상태", key: "status" },
+  { label: text.orderNo, key: "orderNo" },
+  { label: text.orderDate, key: "orderDate" },
+  { label: text.customer, key: "customer" },
+  { label: text.product, key: "product" },
+  { label: text.quantity, key: "quantity" },
+  { label: text.unitPrice, key: "unitPrice" },
+  { label: text.dueDate, key: "dueDate" },
+  { label: text.status, key: "status" },
 ];
 
 const orderColumns: DataListColumn<Order>[] = [
+  { align: "center", header: "No.", key: "id", render: (row) => row.id },
+  { align: "center", header: text.orderNo, key: "orderNo", render: (row) => row.orderNo },
+  { align: "center", header: text.orderDate, key: "orderDate", render: (row) => row.orderDate },
+  { header: text.customer, key: "customer", render: (row) => row.customer },
+  { header: text.product, key: "product", render: (row) => row.product },
+  { header: text.quantity, key: "quantity", render: (row) => row.quantity },
+  { header: text.unitPrice, key: "unitPrice", render: (row) => row.unitPrice },
+  { header: text.dueDate, key: "dueDate", render: (row) => row.dueDate },
   {
-    align: "center",
-    header: "No.",
-    key: "id",
-    render: (row) => row.id,
-  },
-  {
-    header: "발주번호",
-    align: "center",
-    key: "orderNo",
-    render: (row) => row.orderNo,
-  },
-  {
-    header: "발주일자",
-    align: "center",
-    key: "orderDate",
-    render: (row) => row.orderDate,
-  },
-  {
-    header: "고객사",
-    key: "customer",
-    render: (row) => row.customer,
-  },
-  {
-    header: "품명",
-    key: "product",
-    render: (row) => row.product,
-  },
-  {
-    header: "발주수량",
-    key: "quantity",
-    render: (row) => row.quantity,
-  },
-  {
-    header: "단가",
-    key: "unitPrice",
-    render: (row) => row.unitPrice,
-  },
-  {
-    header: "납기",
-    key: "dueDate",
-    render: (row) => row.dueDate,
-  },
-  {
-    header: "상태",
+    header: text.status,
     key: "status",
     render: (row) => (
       <span className="rounded-full bg-[#eef4ff] px-3 py-1 font-bold text-slate-900">
@@ -83,93 +91,17 @@ const orderColumns: DataListColumn<Order>[] = [
       </span>
     ),
   },
-  {
-    header: "비고",
-    key: "memo",
-    render: (row) => row.memo,
-  },
+  { header: text.memo, key: "memo", render: (row) => row.memo },
 ];
-
-const baseOrderRows: Order[] = [
-  {
-    id: 1,
-    orderNo: "PO-20260706-001",
-    orderDate: "2026.07.06",
-    customer: "테스트엔테크",
-    product: "Leak Sensor Point-4C",
-    quantity: "74",
-    unitPrice: "143,500",
-    dueDate: "2026.07.10",
-    status: "지시대기",
-    memo: "제품 QR 생성 전 발주서 검토가 필요합니다.",
-  },
-  {
-    id: 2,
-    orderNo: "PO-20260706-002",
-    orderDate: "2026.07.06",
-    customer: "LSE",
-    product: "ECS200A-ORGANIC-000A",
-    quantity: "4",
-    unitPrice: "98,700",
-    dueDate: "2026.07.10",
-    status: "지시대기",
-    memo: "고객사 납기 일정 확인 후 생산지시를 생성합니다.",
-  },
-  {
-    id: 3,
-    orderNo: "PO-20260705-003",
-    orderDate: "2026.07.05",
-    customer: "에스티아이",
-    product: "DU-LK322-S3 커넥터 타입",
-    quantity: "7",
-    unitPrice: "30,000",
-    dueDate: "2026.07.10",
-    status: "생산중",
-    memo: "일부 수량은 공정 진행 중입니다.",
-  },
-  {
-    id: 4,
-    orderNo: "PO-20260703-004",
-    orderDate: "2026.07.03",
-    customer: "TEMCCNS",
-    product: "DU-LK322-NPN-10-S1",
-    quantity: "74",
-    unitPrice: "143,500",
-    dueDate: "2026.06.30",
-    status: "마감",
-    memo: "출하 완료된 발주서입니다.",
-  },
-  {
-    id: 5,
-    orderNo: "PO-20260702-005",
-    orderDate: "2026.07.02",
-    customer: "테스트엔테크",
-    product: "Leak Sensor Support",
-    quantity: "15",
-    unitPrice: "30,000",
-    dueDate: "2026.06.30",
-    status: "출하완료",
-    memo: "납품출하 완료 후 이력 조회가 가능합니다.",
-  },
-];
-
-const orderRows: Order[] = Array.from({ length: 21 }, (_, index) => {
-  const base = baseOrderRows[index % baseOrderRows.length];
-  const sequence = String(index + 1).padStart(3, "0");
-  const day = String(6 - (index % 6)).padStart(2, "0");
-
-  return {
-    ...base,
-    id: index + 1,
-    orderNo: `PO-202607${day}-${sequence}`,
-  };
-});
 
 export default function OrdersListPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
   const [checkedOrderIds, setCheckedOrderIds] = useState<number[]>([]);
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
   const [searchField, setSearchField] = useState<SortKey>("orderNo");
   const [searchText, setSearchText] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
   const {
     clearOrderSidebarSelection,
     closeOrderSidebar,
@@ -178,10 +110,91 @@ export default function OrdersListPage() {
     selectedOrder,
   } = useOrderSidebar();
 
+  useEffect(() => {
+    let ignore = false;
+
+    const loadOrders = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const response = await fetch(orderListApiUrl, { cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error(text.loadError);
+        }
+
+        const result = (await response.json()) as ApiResponse<OrderPurchaseResponse[]>;
+
+        if (!ignore) {
+          setOrders(result.data.map(toOrderRow));
+        }
+      } catch (error) {
+        if (!ignore) {
+          setErrorMessage(error instanceof Error ? error.message : text.unknownLoadError);
+          setOrders([]);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadOrders();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleCreated = (event: Event) => {
+      const createdOrder = (event as CustomEvent<OrderPurchaseResponse>).detail;
+
+      setOrders((current) =>
+        [toOrderRow(createdOrder, 0), ...current].map((order, index) => ({ ...order, id: index + 1 })),
+      );
+    };
+
+    const handleUpdated = (event: Event) => {
+      const { previousOrderNo, order: updatedOrder } = (event as CustomEvent<UpdatedOrderEvent>).detail;
+
+      setOrders((current) =>
+        current
+          .map((order) =>
+            order.orderNo === previousOrderNo ? { ...toOrderRow(updatedOrder, order.id - 1), id: order.id } : order,
+          )
+          .map((order, index) => ({ ...order, id: index + 1 })),
+      );
+    };
+
+    const handleDeleted = (event: Event) => {
+      const deletedOrderNo = (event as CustomEvent<string>).detail;
+
+      setOrders((current) =>
+        current
+          .filter((order) => order.orderNo !== deletedOrderNo)
+          .map((order, index) => ({ ...order, id: index + 1 })),
+      );
+      clearOrderSidebarSelection();
+    };
+
+    window.addEventListener("order-purchase-created", handleCreated);
+    window.addEventListener("order-purchase-updated", handleUpdated);
+    window.addEventListener("order-purchase-deleted", handleDeleted);
+
+    return () => {
+      window.removeEventListener("order-purchase-created", handleCreated);
+      window.removeEventListener("order-purchase-updated", handleUpdated);
+      window.removeEventListener("order-purchase-deleted", handleDeleted);
+    };
+  }, [clearOrderSidebarSelection]);
+
   const searchOptions = Array.from(
-    new Set(orderRows.map((order) => String(getSearchValue(order, searchField)))),
+    new Set(orders.map((order) => String(getSearchValue(order, searchField)))),
   );
-  const filteredOrders = orderRows.filter((order) =>
+  const filteredOrders = orders.filter((order) =>
     String(getSearchValue(order, searchField)).toLowerCase().includes(searchText.toLowerCase()),
   );
 
@@ -221,11 +234,6 @@ export default function OrdersListPage() {
   };
 
   const handleSelectOrder = (order: Order) => {
-    if (selectedOrder?.id === order.id && rightPanelMode === "detail") {
-      clearOrderSidebarSelection();
-      return;
-    }
-
     openOrderDetailSidebar(order);
   };
 
@@ -252,20 +260,68 @@ export default function OrdersListPage() {
             sortConditions={sortConditions}
           />
 
-          <DataListTable
-            checkedRowIds={checkedOrderIds}
-            columns={orderColumns}
-            getRowId={(row) => row.id}
-            onBlankClick={closeOrderSidebar}
-            onCheckboxChange={handleToggleOrderCheckbox}
-            onRowClick={handleSelectOrder}
-            rows={sortedOrders}
-            selectedRowId={rightPanelMode === "detail" ? selectedOrder?.id : null}
-          />
+          {isLoading ? (
+            <ListMessage>{text.loading}</ListMessage>
+          ) : errorMessage ? (
+            <ListMessage>{errorMessage}</ListMessage>
+          ) : sortedOrders.length === 0 ? (
+            <ListMessage>{text.empty}</ListMessage>
+          ) : (
+            <DataListTable
+              checkedRowIds={checkedOrderIds}
+              columns={orderColumns}
+              getRowId={(row) => row.id}
+              onBlankClick={closeOrderSidebar}
+              onCheckboxChange={handleToggleOrderCheckbox}
+              onRowClick={handleSelectOrder}
+              rows={sortedOrders}
+              selectedRowId={rightPanelMode === "detail" ? selectedOrder?.id : null}
+            />
+          )}
         </div>
       </section>
     </main>
   );
+}
+
+function toOrderRow(order: OrderPurchaseResponse, index: number): Order {
+  return {
+    id: index + 1,
+    orderNo: order.purchaseId,
+    orderDate: formatDate(order.purchaseDate),
+    customer: order.customer ?? "-",
+    product: order.productName ?? "-",
+    quantity: formatNumber(order.quantity),
+    unitPrice: formatNumber(order.price),
+    dueDate: formatDate(order.dueDate),
+    status: formatStatus(order.status),
+    memo: order.note ?? "-",
+  };
+}
+
+function formatDate(value: string | null) {
+  return value ? value.replaceAll("-", ".") : "-";
+}
+
+function formatNumber(value: number | null) {
+  return value == null ? "-" : value.toLocaleString("ko-KR");
+}
+
+function formatStatus(value: string | null) {
+  switch (value) {
+    case "INSTRUCTION":
+      return "\uc9c0\uc2dc\ub300\uae30";
+    case "PRODUCING":
+      return "\uc0dd\uc0b0\uc911";
+    case "COMPLETED":
+      return "\uc644\ub8cc";
+    case "SHIPPED":
+      return "\ucd9c\ud558\uc644\ub8cc";
+    case "CANCELED":
+      return "\ucde8\uc18c";
+    default:
+      return value ?? "-";
+  }
 }
 
 function getSortValue(order: Order, key: SortKey) {
@@ -278,4 +334,12 @@ function getSortValue(order: Order, key: SortKey) {
 
 function getSearchValue(order: Order, key: SortKey) {
   return order[key];
+}
+
+function ListMessage({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center border-t border-slate-200 text-sm font-bold text-slate-500">
+      {children}
+    </div>
+  );
 }

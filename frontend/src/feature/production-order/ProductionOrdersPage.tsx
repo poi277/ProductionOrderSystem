@@ -1,11 +1,12 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DataListTable from "../common/DataListTable";
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
 import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
+import type { OrderProductionForm } from "../ordersidebar/OrderProductionFormCard";
 import type { Order } from "../order/OrdersTypes";
 
 type ProductionOrder = {
@@ -21,6 +22,26 @@ type ProductionOrder = {
   dueDate: string;
   status: string;
 };
+
+type ProductionOrderResponse = {
+  productionId: string;
+  purchaseId: string | null;
+  productName: string | null;
+  purchaseQuantity: number | null;
+  instructionQuantity: number | null;
+  productQrQuantity: number | null;
+  completedQuantity: number | null;
+  shippedQuantity: number | null;
+  status: string | null;
+};
+
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
+
+const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
 type SortKey =
   | "productionOrderNo"
@@ -105,92 +126,92 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
   },
 ];
 
-const productionOrderRows: ProductionOrder[] = [
-  {
-    id: 1,
-    productionOrderNo: "PRD-20260706-001",
-    orderNo: "PO-20260706-001",
-    customer: "테스트엔테크",
-    product: "Leak Sensor Point-4C",
-    orderQuantity: "74",
-    instructionQuantity: "74",
-    completedQuantity: "0",
-    shippedQuantity: "0",
-    dueDate: "2026.07.10",
-    status: "지시대기",
-  },
-  {
-    id: 2,
-    productionOrderNo: "PRD-20260706-002",
-    orderNo: "PO-20260706-002",
-    customer: "LSE",
-    product: "ECS200A-ORGANIC-000A",
-    orderQuantity: "4",
-    instructionQuantity: "4",
-    completedQuantity: "1",
-    shippedQuantity: "0",
-    dueDate: "2026.07.10",
-    status: "생산중",
-  },
-  {
-    id: 3,
-    productionOrderNo: "PRD-20260705-003",
-    orderNo: "PO-20260705-003",
-    customer: "에스티아이",
-    product: "DU-LK322-S3 커넥터 타입",
-    orderQuantity: "7",
-    instructionQuantity: "7",
-    completedQuantity: "5",
-    shippedQuantity: "0",
-    dueDate: "2026.07.10",
-    status: "생산중",
-  },
-  {
-    id: 4,
-    productionOrderNo: "PRD-20260703-004",
-    orderNo: "PO-20260703-004",
-    customer: "TEMCCNS",
-    product: "DU-LK322-NPN-10-S1",
-    orderQuantity: "74",
-    instructionQuantity: "74",
-    completedQuantity: "74",
-    shippedQuantity: "74",
-    dueDate: "2026.06.30",
-    status: "출하완료",
-  },
-  {
-    id: 5,
-    productionOrderNo: "PRD-20260702-005",
-    orderNo: "PO-20260702-005",
-    customer: "테스트엔테크",
-    product: "Leak Sensor Support",
-    orderQuantity: "15",
-    instructionQuantity: "15",
-    completedQuantity: "15",
-    shippedQuantity: "12",
-    dueDate: "2026.06.30",
-    status: "마감",
-  },
-];
-
 export default function ProductionOrdersPage() {
+  const [orders, setOrders] = useState<ProductionOrder[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [checkedOrderIds, setCheckedOrderIds] = useState<number[]>([]);
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
   const [searchField, setSearchField] = useState<SortKey>("productionOrderNo");
   const [searchText, setSearchText] = useState("");
   const {
-    clearOrderSidebarSelection,
     closeOrderSidebar,
     openOrderDetailSidebar,
-    rightPanelMode,
-    selectedOrder,
   } = useOrderSidebar();
 
+  useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        const response = await fetch(`${orderApiBaseUrl}/productions`);
+
+        if (!response.ok) {
+          setLoadError("생산지시 목록을 불러오지 못했습니다.");
+          setOrders([]);
+          return;
+        }
+
+        const result = (await response.json()) as ApiResponse<ProductionOrderResponse[]>;
+        setLoadError("");
+        setOrders(result.data.map(toProductionOrderRowFromApi));
+      } catch {
+        setLoadError("생산지시 목록을 불러오지 못했습니다.");
+        setOrders([]);
+      }
+    };
+
+    void loadOrders();
+  }, []);
+
+  useEffect(() => {
+    const handleCreate = (event: Event) => {
+      const createdOrder = (event as CustomEvent<ProductionOrderResponse>).detail;
+
+      setOrders((current) =>
+        [toProductionOrderRowFromApi(createdOrder, 0), ...current].map((order, index) => ({ ...order, id: index + 1 })),
+      );
+    };
+
+    const handleUpdate = (event: Event) => {
+      const { previousProductionOrderNo, order: updatedOrder } = (
+        event as CustomEvent<{ previousProductionOrderNo: string; order: OrderProductionForm }>
+      ).detail;
+
+      setOrders((current) =>
+        current.map((order) =>
+          order.productionOrderNo === previousProductionOrderNo
+            ? { ...toProductionOrderRow(updatedOrder, order.id - 1), id: order.id }
+            : order,
+        ),
+      );
+    };
+
+    const handleDelete = (event: Event) => {
+      const deletedProductionOrderNo = (event as CustomEvent<string>).detail;
+
+      setOrders((current) =>
+        current
+          .filter((order) => order.productionOrderNo !== deletedProductionOrderNo)
+          .map((order, index) => ({ ...order, id: index + 1 })),
+      );
+      setSelectedOrderId(null);
+      closeOrderSidebar();
+    };
+
+    window.addEventListener("production-order-created", handleCreate);
+    window.addEventListener("production-order-updated", handleUpdate);
+    window.addEventListener("production-order-deleted", handleDelete);
+
+    return () => {
+      window.removeEventListener("production-order-created", handleCreate);
+      window.removeEventListener("production-order-updated", handleUpdate);
+      window.removeEventListener("production-order-deleted", handleDelete);
+    };
+  }, [closeOrderSidebar]);
+
   const searchOptions = Array.from(
-    new Set(productionOrderRows.map((order) => String(getSearchValue(order, searchField)))),
+    new Set(orders.map((order) => String(getSearchValue(order, searchField)))),
   );
-  const filteredOrders = productionOrderRows.filter((order) =>
+  const filteredOrders = orders.filter((order) =>
     String(getSearchValue(order, searchField)).toLowerCase().includes(searchText.toLowerCase()),
   );
   const sortedOrders = [...filteredOrders].sort((a, b) => {
@@ -237,12 +258,6 @@ export default function ProductionOrdersPage() {
   };
 
   const handleSelectOrder = (order: ProductionOrder) => {
-    if (selectedOrderId === order.id && selectedOrder?.orderNo === order.orderNo && rightPanelMode === "detail") {
-      setSelectedOrderId(null);
-      clearOrderSidebarSelection();
-      return;
-    }
-
     setSelectedOrderId(order.id);
     openOrderDetailSidebar(toSidebarOrder(order));
   };
@@ -270,6 +285,7 @@ export default function ProductionOrdersPage() {
           onRowClick={handleSelectOrder}
           rows={sortedOrders}
           selectedRowId={selectedOrderId}
+          emptyMessage={loadError || "리스트가 비어있습니다."}
         />
       </section>
     </main>
@@ -291,13 +307,70 @@ function getSearchValue(order: ProductionOrder, key: SortKey) {
 function toSidebarOrder(order: ProductionOrder): Order {
   return {
     id: order.id,
+    detailType: "production",
     orderNo: order.orderNo,
+    orderDate: "-",
+    productionOrderNo: order.productionOrderNo,
     customer: order.customer,
     product: order.product,
     quantity: order.instructionQuantity,
+    instructionQuantity: order.instructionQuantity,
+    completedQuantity: order.completedQuantity,
+    shippedQuantity: order.shippedQuantity,
     unitPrice: "-",
     dueDate: order.dueDate,
     status: order.status,
-    memo: `${order.productionOrderNo} ?앹궛吏?쒖엯?덈떎. ?꾨즺?섎웾 ${order.completedQuantity}, 異쒗븯?섎웾 ${order.shippedQuantity}`,
+    memo: `${order.productionOrderNo} 생산지시입니다. 완료수량 ${order.completedQuantity}, 출하수량 ${order.shippedQuantity}`,
   };
+}
+
+function toProductionOrderRow(order: OrderProductionForm, index: number): ProductionOrder {
+  return {
+    id: index + 1,
+    productionOrderNo: order.productionOrderNo,
+    orderNo: order.orderNo,
+    customer: order.customer || "-",
+    product: order.product || "-",
+    orderQuantity: order.instructionQuantity || "0",
+    instructionQuantity: order.instructionQuantity || "0",
+    completedQuantity: order.completedQuantity || "0",
+    shippedQuantity: order.shippedQuantity || "0",
+    dueDate: order.dueDate ? order.dueDate.replaceAll("-", ".") : "-",
+    status: order.status,
+  };
+}
+
+function toProductionOrderRowFromApi(order: ProductionOrderResponse, index: number): ProductionOrder {
+  const instructionQuantity = String(order.instructionQuantity ?? 0);
+
+  return {
+    id: index + 1,
+    productionOrderNo: order.productionId,
+    orderNo: order.purchaseId ?? "-",
+    customer: "-",
+    product: order.productName ?? "-",
+    orderQuantity: String(order.purchaseQuantity ?? instructionQuantity),
+    instructionQuantity,
+    completedQuantity: String(order.completedQuantity ?? 0),
+    shippedQuantity: String(order.shippedQuantity ?? 0),
+    dueDate: "-",
+    status: toProductionStatusLabel(order.status),
+  };
+}
+
+function toProductionStatusLabel(status: string | null) {
+  switch (status) {
+    case "WAITING":
+      return "지시대기";
+    case "IN_PROGRESS":
+      return "생산중";
+    case "COMPLETED":
+      return "완료";
+    case "SHIPPED":
+      return "출하완료";
+    case "CANCELED":
+      return "취소";
+    default:
+      return status ?? "-";
+  }
 }

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 export type DataListColumn<TRow> = {
-  align?: "left" | "right";
+  align?: "left" | "center" | "right";
   header: string;
   key: string;
   render: (row: TRow) => ReactNode;
@@ -12,6 +12,7 @@ export type DataListColumn<TRow> = {
 type DataListTableProps<TRow> = {
   columns: DataListColumn<TRow>[];
   rows: TRow[];
+  emptyMessage?: string;
   selectedRowId?: string | number | null;
   checkedRowIds?: Array<string | number>;
   getRowId: (row: TRow) => string | number;
@@ -23,6 +24,7 @@ type DataListTableProps<TRow> = {
 export default function DataListTable<TRow>({
   columns,
   rows,
+  emptyMessage,
   selectedRowId,
   checkedRowIds,
   getRowId,
@@ -122,6 +124,11 @@ export default function DataListTable<TRow>({
             })}
           </tbody>
         </table>
+        {rows.length === 0 && emptyMessage && (
+          <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm font-bold text-slate-400">
+            {emptyMessage}
+          </div>
+        )}
         {totalPages > 1 && (
           <div className="mt-auto flex items-center justify-center gap-1 py-4 text-sm font-semibold text-slate-500">
             {Array.from({ length: totalPages }, (_, index) => {

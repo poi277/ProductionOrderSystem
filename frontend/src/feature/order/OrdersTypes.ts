@@ -1,10 +1,36 @@
 export type Order = {
   id: number;
+  detailType?: "purchase" | "production" | "process" | "shipment" | "label" | "history";
   orderNo: string;
   orderDate: string;
+  historyId?: number;
+  productionOrderNo?: string;
+  productionOrderId?: string;
   customer: string;
   product: string;
   quantity: string;
+  instructionQuantity?: string;
+  completedQuantity?: string;
+  shippedQuantity?: string;
+  productQr?: string;
+  qrData?: string;
+  title?: string;
+  line1?: string;
+  line2?: string;
+  printedAt?: string;
+  lotNo?: string;
+  processName?: string;
+  processSequence?: string;
+  isShipmentTarget?: string;
+  startedAt?: string;
+  productProcessNo?: string;
+  shippedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  judgment?: string;
+  defectType?: string;
+  worker?: string;
+  equipment?: string;
   unitPrice: string;
   dueDate: string;
   status: string;
@@ -13,3 +39,5 @@ export type Order = {
 };
 
 export type RightPanelMode = "detail" | "create";
+
+export type SidebarFormType = "purchase" | "production" | "process" | "shipment" | "label" | "history";
