@@ -3,7 +3,7 @@ package com.poi.orderSystem.features.entity;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
-import com.poi.orderSystem.features.util.EnumUtil.HistoryStatus;
+import com.poi.orderSystem.features.util.EnumUtil.ProductProcess;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,24 +17,20 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "orderHistory")
+@Table(name = "processHistory")
 @Getter
 @Setter
-public class OrderHistory {
-
+public class ProcessHistory {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long historyId;
-
+	private Long processId;
+	private String purchaseId;
 	private String productQr;
-	private String productionId;
-	private String productName;
-	private Long price;
-	private String note;
-	private LocalDateTime createdTime;
 
 	@Enumerated(EnumType.STRING)
-	private HistoryStatus status;
+	private ProductProcess productProcess;
+	private boolean isSuccess;
+	private LocalDateTime createdTime;
 
 	@PrePersist
 	private void onCreate() {

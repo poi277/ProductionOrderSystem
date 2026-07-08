@@ -60,11 +60,13 @@ export default function OrderPurchaseFormCard({
   };
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white px-3 py-4 shadow-sm">
-      <header className="border-b border-slate-100 pb-2">
-        {eyebrow && <p className="text-[11px] font-bold text-[#1f4f9a]">{eyebrow}</p>}
-        <h2 className="mt-0.5 truncate text-base font-bold text-slate-950">{title}</h2>
-      </header>
+    <section className="h-[560px] overflow-y-auto rounded-lg border border-slate-100 bg-white px-3 py-4">
+      {(eyebrow || title) && (
+        <header className="border-b border-slate-100 pb-2">
+          {eyebrow && <p className="text-[11px] font-bold text-[#1f4f9a]">{eyebrow}</p>}
+          {title && <h2 className="mt-0.5 truncate text-base font-bold text-slate-950">{title}</h2>}
+        </header>
+      )}
 
       <div className="mt-3 flex flex-col gap-3">
         <FormRow label={text.purchaseId}>
@@ -136,10 +138,10 @@ export default function OrderPurchaseFormCard({
               className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
               disabled={disabled}
               onChange={(event) => onChange("status", event.target.value)}
-              value={form.status ?? "INSTRUCTION"}
+              value={form.status ?? "WAITING"}
             >
-              <option value="INSTRUCTION">{text.statusInstruction}</option>
-              <option value="PRODUCING">{text.statusProducing}</option>
+              <option value="WAITING">{text.statusInstruction}</option>
+              <option value="IN_PROGRESS">{text.statusProducing}</option>
               <option value="COMPLETED">{text.statusCompleted}</option>
               <option value="SHIPPED">{text.statusShipped}</option>
               <option value="CANCELED">{text.statusCanceled}</option>

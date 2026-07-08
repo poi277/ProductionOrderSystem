@@ -15,11 +15,8 @@ type ProductProcess = {
   productQr: string;
   productName: string;
   lotNo: string;
-  processName: string;
   processSequence: string;
-  status: string;
-  isShipmentTarget: string;
-  startedAt: string;
+  createdTime: string;
 };
 
 type ProductProcessResponse = {
@@ -27,11 +24,11 @@ type ProductProcessResponse = {
   productionId: string | null;
   productName: string | null;
   lot: string | null;
+  process: string | null;
   processName: string | null;
-  processSequence: number | null;
-  status: string | null;
-  shipped: boolean | null;
+  processSequence: string | null;
   startedAt: string | null;
+  createdTime: string | null;
 };
 
 type ApiResponse<T> = {
@@ -42,39 +39,33 @@ type ApiResponse<T> = {
 
 const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
+const productProcessLabels: Record<string, string> = {
+  PRODUCTION_INSTRUCTION_CHECK: "생산지시",
+  ASSEMBLY: "조립",
+  FUNCTION_TEST: "기능검사",
+  SHIPMENT_INSPECTION: "출하검사",
+  SHIPMENT: "출하중",
+};
+
 type SortKey = keyof Omit<ProductProcess, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
   { label: "생산지시번호", key: "productionOrderNo" },
   { label: "제품 QR", key: "productQr" },
-  { label: "품명", key: "productName" },
+  { label: "제품명", key: "productName" },
   { label: "LOT 번호", key: "lotNo" },
-  { label: "공정명", key: "processName" },
   { label: "공정순서", key: "processSequence" },
-  { label: "상태", key: "status" },
-  { label: "출하대상", key: "isShipmentTarget" },
-  { label: "시작일시", key: "startedAt" },
+  { label: "생성시간", key: "createdTime" },
 ];
 
 const processColumns: DataListColumn<ProductProcess>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
   { align: "center", header: "생산지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "제품 QR", key: "productQr", render: (row) => row.productQr },
-  { header: "품명", key: "productName", render: (row) => row.productName },
+  { header: "제품명", key: "productName", render: (row) => row.productName },
   { align: "center", header: "LOT 번호", key: "lotNo", render: (row) => row.lotNo },
-  { header: "공정명", key: "processName", render: (row) => row.processName },
   { align: "center", header: "공정순서", key: "processSequence", render: (row) => row.processSequence },
-  {
-    header: "상태",
-    key: "status",
-    render: (row) => (
-      <span className="rounded-full bg-[#eef4ff] px-3 py-1 font-bold text-slate-900">
-        {row.status}
-      </span>
-    ),
-  },
-  { align: "center", header: "출하대상", key: "isShipmentTarget", render: (row) => row.isShipmentTarget },
-  { align: "center", header: "시작일시", key: "startedAt", render: (row) => row.startedAt },
+  { align: "center", header: "생성시간", key: "createdTime", render: (row) => row.createdTime },
 ];
 
 export default function ProductProcessesPage() {
@@ -183,10 +174,12 @@ export default function ProductProcessesPage() {
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={handleSort}
+          onDelete={() => console.log("delete selected product processes", checkedRowIds)}
           options={sortButtons}
           searchField={searchField}
           searchOptions={searchOptions}
           searchText={searchText}
+          selectedCount={checkedRowIds.length}
           sortConditions={sortConditions}
         />
         <DataListTable
@@ -229,21 +222,20 @@ function toSidebarOrder(row: ProductProcess): Order {
     id: row.id,
     detailType: "process",
     orderNo: row.productionOrderNo,
-    orderDate: row.startedAt,
+    orderDate: "-",
     productionOrderNo: row.productionOrderNo,
     productQr: row.productQr,
     lotNo: row.lotNo,
-    processName: row.processName,
+    processName: row.processSequence,
     processSequence: row.processSequence,
-    isShipmentTarget: row.isShipmentTarget,
-    startedAt: row.startedAt,
+    startedAt: "-",
     customer: "-",
     product: row.productName,
     quantity: row.processSequence,
     unitPrice: "-",
-    dueDate: row.startedAt,
-    status: row.status,
-    memo: `QR ${row.productQr}, LOT ${row.lotNo}, process ${row.processName}, shipment target ${row.isShipmentTarget}`,
+    dueDate: "-",
+    status: "-",
+    memo: `QR ${row.productQr}, LOT ${row.lotNo}, process ${row.processSequence}`,
   };
 }
 
@@ -254,11 +246,8 @@ function toProductProcessRow(process: OrderProcessForm, index: number): ProductP
     productQr: process.productQr,
     productName: process.productName || "-",
     lotNo: process.lotNo || "-",
-    processName: process.processName || "-",
-    processSequence: process.processSequence || "1",
-    status: process.status,
-    isShipmentTarget: process.isShipmentTarget,
-    startedAt: toDisplayDateTime(process.startedAt),
+    processSequence: toProductProcessLabel(process.processSequence),
+    createdTime: "-",
   };
 }
 
@@ -269,27 +258,17 @@ function toProductProcessRowFromApi(process: ProductProcessResponse, index: numb
     productQr: process.productQr,
     productName: process.productName ?? "-",
     lotNo: process.lot ?? "-",
-    processName: process.processName ?? "-",
-    processSequence: String(process.processSequence ?? 1),
-    status: toProcessStatusLabel(process.status),
-    isShipmentTarget: process.shipped ? "Y" : "N",
-    startedAt: toDisplayDateTime(process.startedAt ?? ""),
+    processSequence: toProductProcessLabel(process.process ?? process.processSequence),
+    createdTime: toDisplayDateTime(process.createdTime ?? ""),
   };
 }
 
-function toProcessStatusLabel(status: string | null) {
-  switch (status) {
-    case "WAITING":
-      return "대기";
-    case "IN_PROGRESS":
-      return "진행중";
-    case "COMPLETED":
-      return "완료";
-    case "DEFECTIVE":
-      return "불량";
-    default:
-      return status ?? "-";
+function toProductProcessLabel(value: string | null | undefined) {
+  if (!value) {
+    return "-";
   }
+
+  return productProcessLabels[value] ?? value;
 }
 
 function toDisplayDateTime(value: string) {

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 export type DataListColumn<TRow> = {
   align?: "left" | "center" | "right";
+  cellClassName?: string;
   header: string;
   key: string;
   render: (row: TRow) => ReactNode;
@@ -107,10 +108,12 @@ export default function DataListTable<TRow>({
                   </td>
                   {columns.map((column, columnIndex) => {
                     const align = column.align ?? (columnIndex < 3 ? "left" : "center");
+                    const cellClassName =
+                      column.cellClassName ?? "truncate px-3 py-3 font-bold text-slate-900";
 
                     return (
                     <td
-                      className={`truncate px-3 py-3 font-bold text-slate-900 ${
+                      className={`${cellClassName} ${
                         align === "right" ? "text-right" : align === "center" ? "text-center" : ""
                       }`}
                       key={column.key}

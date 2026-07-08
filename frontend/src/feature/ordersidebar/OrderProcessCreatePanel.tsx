@@ -7,6 +7,7 @@ import type { OrderProcessForm } from "./OrderProcessFormCard";
 
 type OrderProcessCreatePanelProps = {
   onCancel: () => void;
+  submitButtonClassName: string;
 };
 
 const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
@@ -33,7 +34,7 @@ function createProductQr() {
   return `QR-${date}-${sequence}`;
 }
 
-export default function OrderProcessCreatePanel({ onCancel }: OrderProcessCreatePanelProps) {
+export default function OrderProcessCreatePanel({ onCancel, submitButtonClassName }: OrderProcessCreatePanelProps) {
   const initialForm = useMemo<OrderProcessForm>(
     () => ({
       productionOrderNo: "",
@@ -41,7 +42,7 @@ export default function OrderProcessCreatePanel({ onCancel }: OrderProcessCreate
       productName: "",
       lotNo: "",
       processName: "",
-      processSequence: "1",
+      processSequence: "PRODUCTION_INSTRUCTION_CHECK",
       status: "대기",
       isShipmentTarget: "N",
       startedAt: "",
@@ -86,11 +87,11 @@ export default function OrderProcessCreatePanel({ onCancel }: OrderProcessCreate
 
   return (
     <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleSubmit}>
-      <OrderProcessFormCard form={form} onChange={updateForm} title={text.title} />
+      <OrderProcessFormCard form={form} onChange={updateForm} title="" />
 
       <div className="flex gap-2">
         <button
-          className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+          className={`h-8 flex-1 rounded-md ${submitButtonClassName} text-xs font-bold disabled:bg-slate-300`}
           disabled={submitStatus === "saving"}
           type="submit"
         >
@@ -120,24 +121,6 @@ function toProductProcessRequest(form: OrderProcessForm) {
     productionId: form.productionOrderNo || null,
     productName: form.productName,
     lot: form.lotNo,
-    processName: form.processName,
-    processSequence: form.processSequence ? Number(form.processSequence) : null,
-    status: toProcessStatus(form.status),
-    shipped: form.isShipmentTarget === "Y",
-    startedAt: form.startedAt || null,
+    process: form.processSequence,
   };
-}
-
-function toProcessStatus(status: string) {
-  switch (status) {
-    case "진행중":
-      return "IN_PROGRESS";
-    case "완료":
-      return "COMPLETED";
-    case "불량":
-    case "중단":
-      return "DEFECTIVE";
-    default:
-      return "WAITING";
-  }
 }

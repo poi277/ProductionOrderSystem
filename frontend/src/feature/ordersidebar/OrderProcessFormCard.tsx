@@ -12,6 +12,14 @@ export type OrderProcessForm = {
   startedAt: string;
 };
 
+const processOptions = [
+  { label: "생산지시", value: "PRODUCTION_INSTRUCTION_CHECK" },
+  { label: "조립", value: "ASSEMBLY" },
+  { label: "기능검사", value: "FUNCTION_TEST" },
+  { label: "출하검사", value: "SHIPMENT_INSPECTION" },
+  { label: "출하중", value: "SHIPMENT" },
+];
+
 type OrderProcessFormCardProps = {
   disabled?: boolean;
   form: OrderProcessForm;
@@ -22,13 +30,9 @@ type OrderProcessFormCardProps = {
 const text = {
   isShipmentTarget: "출하대상",
   lotNo: "LOT번호",
-  processName: "공정명",
   processSequence: "공정순서",
-  productName: "품명",
+  productName: "제품명",
   productQr: "제품 QR",
-  productionOrderNo: "생산지시번호",
-  startedAt: "시작일시",
-  status: "상태",
   title: "생산현황 세부정보",
 };
 
@@ -39,20 +43,14 @@ export default function OrderProcessFormCard({
   title = text.title,
 }: OrderProcessFormCardProps) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white px-3 py-4 shadow-sm">
-      <header className="border-b border-slate-100 pb-2">
-        <h2 className="mt-0.5 truncate text-base font-bold text-slate-950">{title}</h2>
-      </header>
+    <section className="h-[560px] overflow-y-auto rounded-lg border border-slate-100 bg-white px-3 py-4">
+      {title && (
+        <header className="border-b border-slate-100 pb-2">
+          <h2 className="mt-0.5 truncate text-base font-bold text-slate-950">{title}</h2>
+        </header>
+      )}
 
       <div className="mt-3 flex flex-col gap-3">
-        <FormRow label={text.productionOrderNo}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productionOrderNo", value)}
-            required
-            value={form.productionOrderNo}
-          />
-        </FormRow>
         <FormRow label={text.productQr}>
           <TextInput
             disabled={disabled}
@@ -72,55 +70,27 @@ export default function OrderProcessFormCard({
         <FormRow label={text.lotNo}>
           <TextInput disabled={disabled} onChange={(value) => onChange?.("lotNo", value)} value={form.lotNo} />
         </FormRow>
-        <FormRow label={text.processName}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("processName", value)}
-            required
-            value={form.processName}
-          />
-        </FormRow>
         <FormRow label={text.processSequence}>
-          <TextInput
-            disabled={disabled}
-            min={1}
-            onChange={(value) => onChange?.("processSequence", value)}
-            required
-            type="number"
-            value={form.processSequence}
-          />
-        </FormRow>
-        <FormRow label={text.status}>
-          <select
-            className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-            disabled={disabled}
-            onChange={(event) => onChange?.("status", event.target.value)}
-            value={form.status}
-          >
-            <option value="대기">대기</option>
-            <option value="진행중">진행중</option>
-            <option value="완료">완료</option>
-            <option value="중단">중단</option>
-          </select>
-        </FormRow>
-        <FormRow label={text.isShipmentTarget}>
-          <select
-            className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-            disabled={disabled}
-            onChange={(event) => onChange?.("isShipmentTarget", event.target.value)}
-            value={form.isShipmentTarget}
-          >
-            <option value="N">N</option>
-            <option value="Y">Y</option>
-          </select>
-        </FormRow>
-        <FormRow label={text.startedAt}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("startedAt", value)}
-            type="datetime-local"
-            value={form.startedAt}
-          />
+          <div className="grid grid-cols-2 gap-2">
+            {processOptions.map((option) => (
+              <label
+                className={`flex min-h-9 items-center gap-2 rounded-md border px-2.5 text-xs font-bold ${
+                  form.processSequence === option.value
+                    ? "border-sky-400 bg-sky-50 text-sky-800"
+                    : "border-slate-200 bg-white text-slate-900"
+                } ${disabled ? "opacity-80" : ""}`}
+                key={option.value}
+              >
+                <input
+                  checked={form.processSequence === option.value}
+                  disabled={disabled}
+                  onChange={() => onChange?.("processSequence", option.value)}
+                  type="checkbox"
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
         </FormRow>
       </div>
     </section>

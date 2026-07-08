@@ -7,6 +7,7 @@ import type { OrderHistoryForm } from "./OrderHistoryFormCard";
 
 type OrderHistoryCreatePanelProps = {
   onCancel: () => void;
+  submitButtonClassName: string;
 };
 
 const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
@@ -21,7 +22,7 @@ const text = {
   title: "이력",
 };
 
-export default function OrderHistoryCreatePanel({ onCancel }: OrderHistoryCreatePanelProps) {
+export default function OrderHistoryCreatePanel({ onCancel, submitButtonClassName }: OrderHistoryCreatePanelProps) {
   const initialForm = useMemo<OrderHistoryForm>(
     () => ({
       historyId: "",
@@ -79,11 +80,11 @@ export default function OrderHistoryCreatePanel({ onCancel }: OrderHistoryCreate
 
   return (
     <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleSubmit}>
-      <OrderHistoryFormCard form={form} onChange={updateForm} title={text.title} />
+      <OrderHistoryFormCard form={form} onChange={updateForm} title="" />
 
       <div className="flex gap-2">
         <button
-          className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+          className={`h-8 flex-1 rounded-md ${submitButtonClassName} text-xs font-bold disabled:bg-slate-300`}
           disabled={submitStatus === "saving"}
           type="submit"
         >

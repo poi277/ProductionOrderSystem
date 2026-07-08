@@ -8,6 +8,7 @@ import type { OrderPurchaseForm } from "./OrderPurchaseFormCard";
 type OrderCreatePanelProps = {
   onCancel: () => void;
   onSave: (form: OrderPurchaseForm) => void;
+  submitButtonClassName: string;
 };
 
 type ApiResponse<T> = {
@@ -64,7 +65,7 @@ function getTodayDate() {
   ].join("-");
 }
 
-export default function OrderCreatePanel({ onCancel, onSave }: OrderCreatePanelProps) {
+export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassName }: OrderCreatePanelProps) {
   const initialForm = useMemo(
     () => ({
       purchaseId: createPurchaseId(),
@@ -75,7 +76,7 @@ export default function OrderCreatePanel({ onCancel, onSave }: OrderCreatePanelP
       unitPrice: "",
       dueDate: "",
       memo: "",
-      status: "INSTRUCTION",
+      status: "WAITING",
     }),
     [],
   );
@@ -136,12 +137,12 @@ export default function OrderCreatePanel({ onCancel, onSave }: OrderCreatePanelP
         onChange={updateForm}
         showOrderDate
         showStatus
-        title={text.title}
+        title=""
       />
 
       <div className="flex gap-2">
         <button
-          className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+          className={`h-8 flex-1 rounded-md ${submitButtonClassName} text-xs font-bold disabled:bg-slate-300`}
           disabled={submitStatus === "saving"}
           type="submit"
         >

@@ -39,10 +39,12 @@ export default function OrderShipmentFormCard({
   title = text.title,
 }: OrderShipmentFormCardProps) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white px-3 py-4 shadow-sm">
-      <header className="border-b border-slate-100 pb-2">
-        <h2 className="mt-0.5 truncate text-base font-bold text-slate-950">{title}</h2>
-      </header>
+    <section className="h-[560px] overflow-y-auto rounded-lg border border-slate-100 bg-white px-3 py-4">
+      {title && (
+        <header className="border-b border-slate-100 pb-2">
+          <h2 className="mt-0.5 truncate text-base font-bold text-slate-950">{title}</h2>
+        </header>
+      )}
 
       <div className="mt-3 flex flex-col gap-3">
         <FormRow label={text.productionOrderNo}>

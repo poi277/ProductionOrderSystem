@@ -15,13 +15,9 @@ type HistoryRow = {
   productionOrderNo: string;
   productQr: string;
   productName: string;
-  processName: string;
-  judgment: string;
-  defectType: string;
-  worker: string;
-  equipment: string;
   status: string;
   memo: string;
+  createdTime: string;
 };
 
 type HistoryResponse = {
@@ -29,13 +25,9 @@ type HistoryResponse = {
   productQr: string | null;
   productionId: string | null;
   productName: string | null;
-  processName: string | null;
-  judgment: string | null;
-  defectType: string | null;
-  worker: string | null;
-  equipment: string | null;
   note: string | null;
   status: string | null;
+  createdTime: string | null;
 };
 
 type ApiResponse<T> = {
@@ -52,11 +44,10 @@ const sortButtons: ListOption<SortKey>[] = [
   { label: "이력번호", key: "historyId" },
   { label: "생산지시번호", key: "productionOrderNo" },
   { label: "제품 QR", key: "productQr" },
-  { label: "품명", key: "productName" },
-  { label: "공정명", key: "processName" },
-  { label: "판정", key: "judgment" },
+  { label: "제품명", key: "productName" },
   { label: "상태", key: "status" },
-  { label: "작업자", key: "worker" },
+  { label: "비고", key: "memo" },
+  { label: "생성시간", key: "createdTime" },
 ];
 
 const historyColumns: DataListColumn<HistoryRow>[] = [
@@ -64,18 +55,14 @@ const historyColumns: DataListColumn<HistoryRow>[] = [
   { align: "center", header: "이력번호", key: "historyId", render: (row) => row.historyId },
   { align: "center", header: "생산지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "제품 QR", key: "productQr", render: (row) => row.productQr },
-  { header: "품명", key: "productName", render: (row) => row.productName },
-  { header: "공정명", key: "processName", render: (row) => row.processName },
-  { header: "판정", key: "judgment", render: (row) => row.judgment },
-  { header: "불량유형", key: "defectType", render: (row) => row.defectType },
-  { header: "작업자", key: "worker", render: (row) => row.worker },
-  { header: "설비", key: "equipment", render: (row) => row.equipment },
+  { header: "제품명", key: "productName", render: (row) => row.productName },
   {
     header: "상태",
     key: "status",
     render: (row) => <span className="rounded-full bg-[#eef4ff] px-3 py-1 font-bold text-slate-900">{row.status}</span>,
   },
   { header: "비고", key: "memo", render: (row) => row.memo },
+  { align: "center", header: "생성시간", key: "createdTime", render: (row) => row.createdTime },
 ];
 
 export default function HistoriesPage() {
@@ -94,7 +81,7 @@ export default function HistoriesPage() {
         const response = await fetch(`${orderApiBaseUrl}/histories`);
 
         if (!response.ok) {
-          setLoadError("이력 목록을 불러오지 못했습니다.");
+          setLoadError("제품이력 목록을 불러오지 못했습니다.");
           setHistories([]);
           return;
         }
@@ -103,7 +90,7 @@ export default function HistoriesPage() {
         setLoadError("");
         setHistories(result.data.map(toHistoryRowFromApi));
       } catch {
-        setLoadError("이력 목록을 불러오지 못했습니다.");
+        setLoadError("제품이력 목록을 불러오지 못했습니다.");
         setHistories([]);
       }
     };
@@ -179,10 +166,12 @@ export default function HistoriesPage() {
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={handleSort}
+          onDelete={() => console.log("delete selected histories", checkedRowIds)}
           options={sortButtons}
           searchField={searchField}
           searchOptions={searchOptions}
           searchText={searchText}
+          selectedCount={checkedRowIds.length}
           sortConditions={sortConditions}
         />
         <DataListTable
@@ -229,11 +218,6 @@ function toSidebarOrder(row: HistoryRow): Order {
     orderDate: "-",
     productionOrderNo: row.productionOrderNo,
     productQr: row.productQr,
-    processName: row.processName,
-    judgment: row.judgment,
-    defectType: row.defectType,
-    worker: row.worker,
-    equipment: row.equipment,
     customer: "-",
     product: row.productName,
     quantity: "-",
@@ -241,6 +225,7 @@ function toSidebarOrder(row: HistoryRow): Order {
     dueDate: "-",
     status: row.status,
     memo: row.memo,
+    createdAt: row.createdTime,
   };
 }
 
@@ -251,13 +236,9 @@ function toHistoryRow(history: OrderHistoryForm, index: number): HistoryRow {
     productionOrderNo: history.productionOrderNo || "-",
     productQr: history.productQr || "-",
     productName: history.productName || "-",
-    processName: history.processName || "-",
-    judgment: history.judgment || "-",
-    defectType: history.defectType || "-",
-    worker: history.worker || "-",
-    equipment: history.equipment || "-",
     status: history.status,
     memo: history.memo || "-",
+    createdTime: "-",
   };
 }
 
@@ -268,17 +249,18 @@ function toHistoryRowFromApi(history: HistoryResponse, index: number): HistoryRo
     productionOrderNo: history.productionId ?? "-",
     productQr: history.productQr ?? "-",
     productName: history.productName ?? "-",
-    processName: history.processName ?? "-",
-    judgment: history.judgment ?? "-",
-    defectType: history.defectType ?? "-",
-    worker: history.worker ?? "-",
-    equipment: history.equipment ?? "-",
     status: toHistoryStatusLabel(history.status),
     memo: history.note ?? "-",
+    createdTime: formatDateTime(history.createdTime),
   };
 }
 
 function toHistoryStatusLabel(status: string | null) {
+  if (status === "CANCEL") return "취소";
   if (status === "DEFECTIVE") return "불량";
   return "정상";
+}
+
+function formatDateTime(value: string | null) {
+  return value ? value.replace("T", " ").replaceAll("-", ".") : "-";
 }

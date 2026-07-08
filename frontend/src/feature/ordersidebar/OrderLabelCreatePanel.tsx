@@ -7,6 +7,7 @@ import type { OrderLabelForm } from "./OrderLabelFormCard";
 
 type OrderLabelCreatePanelProps = {
   onCancel: () => void;
+  submitButtonClassName: string;
 };
 
 const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
@@ -46,7 +47,7 @@ function getCurrentDateTime() {
   ].join("T");
 }
 
-export default function OrderLabelCreatePanel({ onCancel }: OrderLabelCreatePanelProps) {
+export default function OrderLabelCreatePanel({ onCancel, submitButtonClassName }: OrderLabelCreatePanelProps) {
   const initialForm = useMemo<OrderLabelForm>(() => {
     const now = getCurrentDateTime();
 
@@ -102,11 +103,11 @@ export default function OrderLabelCreatePanel({ onCancel }: OrderLabelCreatePane
 
   return (
     <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleSubmit}>
-      <OrderLabelFormCard form={form} onChange={updateForm} title={text.title} />
+      <OrderLabelFormCard form={form} onChange={updateForm} title="" />
 
       <div className="flex gap-2">
         <button
-          className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+          className={`h-8 flex-1 rounded-md ${submitButtonClassName} text-xs font-bold disabled:bg-slate-300`}
           disabled={submitStatus === "saving"}
           type="submit"
         >

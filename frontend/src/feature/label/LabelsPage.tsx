@@ -14,6 +14,8 @@ type LabelRow = {
   productionOrderId: string;
   productionOrderNo: string;
   qrData: string;
+  product: string;
+  lot: string;
   title: string;
   line1: string;
   line2: string;
@@ -46,25 +48,19 @@ const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://lo
 type SortKey = keyof Omit<LabelRow, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
-  { label: "생산지시번호", key: "productionOrderNo" },
   { label: "QR 데이터", key: "qrData" },
-  { label: "라벨 제목", key: "title" },
-  { label: "표시문구1", key: "line1" },
-  { label: "표시문구2", key: "line2" },
-  { label: "출력일시", key: "printedAt" },
+  { label: "제품명", key: "product" },
+  { label: "LOT", key: "lot" },
+  { label: "생산지시번호", key: "productionOrderNo" },
+  { label: "생성시간", key: "createdAt" },
 ];
 
 const labelColumns: DataListColumn<LabelRow>[] = [
-  { align: "center", header: "No.", key: "id", render: (row) => row.id },
-  { align: "center", header: "생산지시ID", key: "productionOrderId", render: (row) => row.productionOrderId },
+  { align: "center", header: "QR데이터", key: "qrData", render: (row) => row.qrData },
+  { header: "제품명", key: "product", render: (row) => row.product },
+  { align: "center", header: "LOT", key: "lot", render: (row) => row.lot },
   { align: "center", header: "생산지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
-  { align: "center", header: "QR 데이터", key: "qrData", render: (row) => row.qrData },
-  { header: "라벨 제목", key: "title", render: (row) => row.title },
-  { header: "표시문구1", key: "line1", render: (row) => row.line1 },
-  { header: "표시문구2", key: "line2", render: (row) => row.line2 },
-  { align: "center", header: "출력일시", key: "printedAt", render: (row) => row.printedAt },
-  { align: "center", header: "등록일시", key: "createdAt", render: (row) => row.createdAt },
-  { align: "center", header: "수정일시", key: "updatedAt", render: (row) => row.updatedAt },
+  { align: "center", header: "생성시간", key: "createdAt", render: (row) => row.createdAt },
 ];
 
 export default function LabelsPage() {
@@ -166,10 +162,12 @@ export default function LabelsPage() {
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={handleSort}
+          onDelete={() => console.log("delete selected labels", checkedRowIds)}
           options={sortButtons}
           searchField={searchField}
           searchOptions={searchOptions}
           searchText={searchText}
+          selectedCount={checkedRowIds.length}
           sortConditions={sortConditions}
         />
         <DataListTable
@@ -224,7 +222,7 @@ function toSidebarOrder(row: LabelRow): Order {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     customer: "-",
-    product: row.title,
+    product: row.product,
     quantity: row.productionOrderId,
     unitPrice: "-",
     dueDate: row.printedAt,
@@ -239,6 +237,8 @@ function toLabelRow(label: OrderLabelForm, index: number): LabelRow {
     productionOrderId: label.productionOrderId || "-",
     productionOrderNo: label.productionOrderNo || "-",
     qrData: label.qrData,
+    product: label.title || "-",
+    lot: label.line1 || "-",
     title: label.title || "-",
     line1: label.line1 || "-",
     line2: label.line2 || "-",
@@ -254,6 +254,8 @@ function toLabelRowFromApi(label: LabelResponse, index: number): LabelRow {
     productionOrderId: label.productionOrderId ?? "-",
     productionOrderNo: label.productionOrderNo ?? "-",
     qrData: label.productQr,
+    product: label.productName ?? label.title ?? "-",
+    lot: label.line1 ?? "-",
     title: label.title ?? label.productName ?? "-",
     line1: label.line1 ?? "-",
     line2: label.line2 ?? "-",

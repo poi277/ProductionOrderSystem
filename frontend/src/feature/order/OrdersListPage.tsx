@@ -18,7 +18,8 @@ type SortKey =
   | "unitPrice"
   | "dueDate"
   | "status"
-  | "memo";
+  | "memo"
+  | "createdAt";
 
 type OrderPurchaseResponse = {
   purchaseId: string;
@@ -30,6 +31,7 @@ type OrderPurchaseResponse = {
   dueDate: string | null;
   status: string | null;
   note: string | null;
+  createdTime: string | null;
 };
 
 type ApiResponse<T> = {
@@ -47,6 +49,7 @@ const orderListApiUrl = process.env.NEXT_PUBLIC_ORDER_LIST_API_URL ?? "http://lo
 
 const text = {
   customer: "\uace0\uac1d\uc0ac",
+  createdAt: "\uc0dd\uc131\uc2dc\uac04",
   dueDate: "\ub0a9\uae30",
   empty: "\ub4f1\ub85d\ub41c\u0020\ubc1c\uc8fc\uc11c\uac00\u0020\uc5c6\uc2b5\ub2c8\ub2e4\u002e",
   loadError: "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\uc744\u0020\uc870\ud68c\ud558\uc9c0\u0020\ubabb\ud588\uc2b5\ub2c8\ub2e4\u002e",
@@ -54,7 +57,7 @@ const text = {
   memo: "\ube44\uace0",
   orderDate: "\ubc1c\uc8fc\uc77c\uc790",
   orderNo: "\ubc1c\uc8fc\ubc88\ud638",
-  product: "\ud488\uba85",
+  product: "\uc81c\ud488\uba85",
   quantity: "\ubc1c\uc8fc\uc218\ub7c9",
   status: "\uc0c1\ud0dc",
   unitPrice: "\ub2e8\uac00",
@@ -71,13 +74,14 @@ const sortButtons: ListOption<SortKey>[] = [
   { label: text.unitPrice, key: "unitPrice" },
   { label: text.dueDate, key: "dueDate" },
   { label: text.status, key: "status" },
+  { label: text.createdAt, key: "createdAt" },
 ];
 
 const orderColumns: DataListColumn<Order>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
   { align: "center", header: text.orderNo, key: "orderNo", render: (row) => row.orderNo },
   { align: "center", header: text.orderDate, key: "orderDate", render: (row) => row.orderDate },
-  { header: text.customer, key: "customer", render: (row) => row.customer },
+  { align: "center", header: text.customer, key: "customer", render: (row) => row.customer },
   { header: text.product, key: "product", render: (row) => row.product },
   { header: text.quantity, key: "quantity", render: (row) => row.quantity },
   { header: text.unitPrice, key: "unitPrice", render: (row) => row.unitPrice },
@@ -92,6 +96,7 @@ const orderColumns: DataListColumn<Order>[] = [
     ),
   },
   { header: text.memo, key: "memo", render: (row) => row.memo },
+  { align: "center", header: text.createdAt, key: "createdAt", render: (row) => row.createdAt ?? "-" },
 ];
 
 export default function OrdersListPage() {
@@ -253,10 +258,12 @@ export default function OrdersListPage() {
             onSearchFieldChange={setSearchField}
             onSearchTextChange={setSearchText}
             onSort={handleSort}
+            onDelete={() => console.log("delete selected orders", checkedOrderIds)}
             options={sortButtons}
             searchField={searchField}
             searchOptions={searchOptions}
             searchText={searchText}
+            selectedCount={checkedOrderIds.length}
             sortConditions={sortConditions}
           />
 
@@ -296,11 +303,16 @@ function toOrderRow(order: OrderPurchaseResponse, index: number): Order {
     dueDate: formatDate(order.dueDate),
     status: formatStatus(order.status),
     memo: order.note ?? "-",
+    createdAt: formatDateTime(order.createdTime),
   };
 }
 
 function formatDate(value: string | null) {
   return value ? value.replaceAll("-", ".") : "-";
+}
+
+function formatDateTime(value: string | null) {
+  return value ? value.replace("T", " ").replaceAll("-", ".") : "-";
 }
 
 function formatNumber(value: number | null) {
@@ -309,8 +321,9 @@ function formatNumber(value: number | null) {
 
 function formatStatus(value: string | null) {
   switch (value) {
-    case "INSTRUCTION":
+    case "WAITING":
       return "\uc9c0\uc2dc\ub300\uae30";
+    case "IN_PROGRESS":
     case "PRODUCING":
       return "\uc0dd\uc0b0\uc911";
     case "COMPLETED":

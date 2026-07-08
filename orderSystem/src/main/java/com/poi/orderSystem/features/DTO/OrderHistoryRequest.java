@@ -1,6 +1,7 @@
 package com.poi.orderSystem.features.DTO;
 
-import com.poi.orderSystem.features.entity.OrderHistory.HistoryStatus;
+
+import com.poi.orderSystem.features.util.EnumUtil.HistoryStatus;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

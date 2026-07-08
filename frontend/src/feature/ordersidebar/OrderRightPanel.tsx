@@ -1,4 +1,7 @@
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { getCategoryActiveClass } from "../common/categoryActiveStyles";
+import type { CategoryActiveKey } from "../common/categoryActiveStyles";
 import type { Order, RightPanelMode, SidebarFormType } from "../order/OrdersTypes";
 import OrderCreatePanel from "./OrderCreatePanel";
 import OrderDetailPanel from "./OrderDetailPanel";
@@ -7,6 +10,14 @@ import OrderLabelCreatePanel from "./OrderLabelCreatePanel";
 import OrderProcessCreatePanel from "./OrderProcessCreatePanel";
 import OrderProductionCreatePanel from "./OrderProductionCreatePanel";
 import OrderShipmentCreatePanel from "./OrderShipmentCreatePanel";
+
+const formSwitchButtons: Array<{ activeKey: CategoryActiveKey; formType: SidebarFormType; label: string }> = [
+  { activeKey: "order", formType: "purchase", label: "발주서" },
+  { activeKey: "production", formType: "production", label: "생산지시" },
+  { activeKey: "process", formType: "process", label: "생산현황" },
+  { activeKey: "shipment", formType: "shipment", label: "납품출하" },
+  { activeKey: "label", formType: "label", label: "라벨" },
+];
 
 type OrderRightPanelProps = {
   isOpen: boolean;
@@ -41,8 +52,11 @@ export default function OrderRightPanel({
 }: OrderRightPanelProps) {
   const pathname = usePathname();
   const currentPageFormType = getCurrentPageFormType(pathname);
+  const [selectedFormType, setSelectedFormType] = useState<SidebarFormType>(sidebarFormType);
+  const activeFormType = mode === "create" ? sidebarFormType : selectedFormType;
   const visibleSelectedOrder =
     (selectedOrder?.detailType ?? "purchase") === currentPageFormType ? selectedOrder : null;
+  const submitButtonClassName = getCategoryActiveClass(getFormActiveKey(sidebarFormType));
 
   return (
     <aside
@@ -68,7 +82,7 @@ export default function OrderRightPanel({
             <div className="grid grid-cols-2 rounded-lg bg-[#eef1f8] p-1 text-xs font-bold text-slate-500">
               <button
                 className={`h-8 rounded-md transition-colors ${
-                  mode === "detail" ? "bg-white text-[#143f80] shadow-sm" : ""
+                  mode === "detail" ? "bg-white text-black" : "hover:text-slate-900"
                 }`}
                 onClick={() => onSetMode("detail")}
                 type="button"
@@ -77,39 +91,69 @@ export default function OrderRightPanel({
               </button>
               <button
                 className={`h-8 rounded-md transition-colors ${
-                  mode === "create" ? "bg-white text-[#143f80] shadow-sm" : ""
+                  mode === "create" ? "bg-white text-black" : "hover:text-slate-900"
                 }`}
-                onClick={() => onSetMode("create", currentPageFormType)}
+                onClick={() => {
+                  setSelectedFormType(currentPageFormType);
+                  onSetMode("create", currentPageFormType);
+                }}
                 type="button"
               >
-                {getCreateTabLabel(currentPageFormType)}
+                주문
               </button>
             </div>
+            <div className="mt-2 grid grid-cols-5 gap-1 rounded-lg bg-[#eef1f8] p-1 text-[11px] font-bold text-slate-500">
+              {formSwitchButtons.map((button) => {
+                const isActive = mode === "create" && activeFormType === button.formType;
+
+                return (
+                  <button
+                    className={`h-8 rounded-md transition-colors ${
+                      isActive ? getCategoryActiveClass(button.activeKey) : "hover:text-slate-900"
+                    }`}
+                    key={button.formType}
+                    onClick={() => {
+                      setSelectedFormType(button.formType);
+                      onSetMode("create", button.formType);
+                    }}
+                    type="button"
+                  >
+                    {button.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          {mode === "create" ? (
-            sidebarFormType === "shipment" ? (
-              <OrderShipmentCreatePanel onCancel={onCancelCreate} />
-            ) : sidebarFormType === "label" ? (
-              <OrderLabelCreatePanel onCancel={onCancelCreate} />
-            ) : sidebarFormType === "history" ? (
-              <OrderHistoryCreatePanel onCancel={onCancelCreate} />
-            ) : sidebarFormType === "process" ? (
-              <OrderProcessCreatePanel onCancel={onCancelCreate} />
-            ) : sidebarFormType === "production" ? (
-              <OrderProductionCreatePanel onCancel={onCancelCreate} />
+          <div className="h-[680px] overflow-y-auto pb-5">
+            {mode === "create" ? (
+              sidebarFormType === "shipment" ? (
+                <OrderShipmentCreatePanel onCancel={onCancelCreate} submitButtonClassName={submitButtonClassName} />
+              ) : sidebarFormType === "label" ? (
+                <OrderLabelCreatePanel onCancel={onCancelCreate} submitButtonClassName={submitButtonClassName} />
+              ) : sidebarFormType === "history" ? (
+                <OrderHistoryCreatePanel onCancel={onCancelCreate} submitButtonClassName={submitButtonClassName} />
+              ) : sidebarFormType === "process" ? (
+                <OrderProcessCreatePanel onCancel={onCancelCreate} submitButtonClassName={submitButtonClassName} />
+              ) : sidebarFormType === "production" ? (
+                <OrderProductionCreatePanel onCancel={onCancelCreate} submitButtonClassName={submitButtonClassName} />
+              ) : (
+                <OrderCreatePanel
+                  onCancel={onCancelCreate}
+                  onSave={onSaveCreate}
+                  submitButtonClassName={submitButtonClassName}
+                />
+              )
             ) : (
-              <OrderCreatePanel onCancel={onCancelCreate} onSave={onSaveCreate} />
-            )
-          ) : (
-            <OrderDetailPanel
-              key={
-                visibleSelectedOrder
-                  ? `${visibleSelectedOrder.detailType ?? "purchase"}-${visibleSelectedOrder.id}-${visibleSelectedOrder.orderNo}`
-                  : "empty"
-              }
-              order={visibleSelectedOrder}
-            />
-          )}
+              <OrderDetailPanel
+                key={
+                  visibleSelectedOrder
+                    ? `${visibleSelectedOrder.detailType ?? "purchase"}-${visibleSelectedOrder.id}-${visibleSelectedOrder.orderNo}`
+                    : "empty"
+                }
+                order={visibleSelectedOrder}
+              />
+            )}
+          </div>
         </div>
       </div>
     </aside>
@@ -126,19 +170,19 @@ function getCurrentPageFormType(pathname: string): SidebarFormType {
   return "purchase";
 }
 
-function getCreateTabLabel(formType: SidebarFormType) {
+function getFormActiveKey(formType: SidebarFormType): CategoryActiveKey {
   switch (formType) {
     case "production":
-      return "생산지시";
+      return "production";
     case "process":
-      return "생산현황";
+      return "process";
     case "shipment":
-      return "납품출하";
+      return "shipment";
     case "label":
-      return "라벨";
+      return "label";
     case "history":
-      return "이력";
+      return "history";
     default:
-      return "주문";
+      return "order";
   }
 }

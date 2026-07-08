@@ -40,6 +40,14 @@ type OrderPurchaseResponse = {
 
 const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
+const productProcessLabels: Record<string, string> = {
+  PRODUCTION_INSTRUCTION_CHECK: "생산지시",
+  ASSEMBLY: "조립",
+  FUNCTION_TEST: "기능검사",
+  SHIPMENT_INSPECTION: "출하검사",
+  SHIPMENT: "출하중",
+};
+
 const text = {
   emptyDescription:
     "\ubaa9\ub85d\uc5d0\uc11c\u0020\ubc1c\uc8fc\uc11c\ub97c\u0020\uc120\ud0dd\ud558\uac70\ub098\u0020\uc8fc\ubb38\u0020\uc0dd\uc131\uc744\u0020\uc2dc\uc791\ud558\uc138\uc694\u002e",
@@ -77,9 +85,10 @@ function toForm(order: Order): OrderPurchaseForm {
 function toProductionForm(order: Order): OrderProductionForm {
   return {
     orderNo: order.orderNo,
-    productionOrderNo: order.productionOrderNo ?? "",
     customer: order.customer === "-" ? "" : order.customer,
     product: order.product === "-" ? "" : order.product,
+    productCodePrefix: "",
+    lotNo: order.lotNo ?? "",
     instructionQuantity: (order.instructionQuantity ?? order.quantity).replaceAll(",", ""),
     completedQuantity: (order.completedQuantity ?? "0").replaceAll(",", ""),
     shippedQuantity: (order.shippedQuantity ?? "0").replaceAll(",", ""),
@@ -95,7 +104,7 @@ function toProcessForm(order: Order): OrderProcessForm {
     productName: order.product === "-" ? "" : order.product,
     lotNo: order.lotNo ?? "",
     processName: order.processName ?? "",
-    processSequence: order.processSequence ?? order.quantity,
+    processSequence: toProductProcessCode(order.processSequence ?? order.processName ?? ""),
     status: order.status,
     isShipmentTarget: order.isShipmentTarget ?? "N",
     startedAt: toDateTimeInputValue(order.startedAt ?? ""),
@@ -164,11 +173,7 @@ function toProductProcessRequest(form: OrderProcessForm) {
     productionId: form.productionOrderNo || null,
     productName: form.productName,
     lot: form.lotNo,
-    processName: form.processName,
-    processSequence: form.processSequence ? Number(form.processSequence) : null,
-    status: toProcessStatus(form.status),
-    shipped: form.isShipmentTarget === "Y",
-    startedAt: form.startedAt || null,
+    process: form.processSequence,
   };
 }
 
@@ -217,18 +222,13 @@ function toHistoryRequest(form: OrderHistoryForm) {
   };
 }
 
-function toProcessStatus(status: string) {
-  switch (status) {
-    case "진행중":
-      return "IN_PROGRESS";
-    case "완료":
-      return "COMPLETED";
-    case "불량":
-    case "중단":
-      return "DEFECTIVE";
-    default:
-      return "WAITING";
+function toProductProcessCode(value: string) {
+  if (productProcessLabels[value]) {
+    return value;
   }
+
+  const found = Object.entries(productProcessLabels).find(([, label]) => label === value);
+  return found?.[0] ?? "PRODUCTION_INSTRUCTION_CHECK";
 }
 
 export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
@@ -354,7 +354,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
         <div className="flex gap-2">
           <button
-            className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
             disabled={submitStatus === "saving" || (isEditing && !hasLabelChanges)}
             type="submit"
           >
@@ -480,7 +480,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
         <div className="flex gap-2">
           <button
-            className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
             disabled={submitStatus === "saving" || (isEditing && !hasHistoryChanges)}
             type="submit"
           >
@@ -602,7 +602,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
         <div className="flex gap-2">
           <button
-            className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
             disabled={submitStatus === "saving" || (isEditing && !hasShipmentChanges)}
             type="submit"
           >
@@ -724,7 +724,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
         <div className="flex gap-2">
           <button
-            className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
             disabled={submitStatus === "saving" || (isEditing && !hasProcessChanges)}
             type="submit"
           >
@@ -788,7 +788,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           "production-order-updated",
           {
             detail: {
-              previousProductionOrderNo: order.productionOrderNo ?? "",
+              previousProductionOrderNo: order.orderNo,
               order: productionForm,
             },
           },
@@ -800,7 +800,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitStatus("success");
       setSubmitMessage("생산지시가 삭제되었습니다.");
       setIsDeleteConfirmOpen(false);
-      window.dispatchEvent(new CustomEvent<string>("production-order-deleted", { detail: order.productionOrderNo ?? "" }));
+      window.dispatchEvent(new CustomEvent<string>("production-order-deleted", { detail: order.orderNo }));
     };
 
     return (
@@ -813,7 +813,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
         <div className="flex gap-2">
           <button
-            className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
             disabled={submitStatus === "saving" || (isEditing && !hasProductionChanges)}
             type="submit"
           >
@@ -949,7 +949,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
       <div className="flex gap-2">
         <button
-          className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+          className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
           disabled={submitStatus === "saving" || (isEditing && !hasChanges)}
           type="submit"
         >
@@ -984,9 +984,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 function toPurchaseStatus(status: string) {
   switch (status) {
     case "\uc9c0\uc2dc\ub300\uae30":
-      return "INSTRUCTION";
+      return "WAITING";
     case "\uc0dd\uc0b0\uc911":
-      return "PRODUCING";
+      return "IN_PROGRESS";
     case "\uc644\ub8cc":
       return "COMPLETED";
     case "\ucd9c\ud558\uc644\ub8cc":

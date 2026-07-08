@@ -11,28 +11,28 @@ import type { Order } from "../order/OrdersTypes";
 
 type ProductionOrder = {
   id: number;
-  productionOrderNo: string;
   orderNo: string;
   customer: string;
   product: string;
   orderQuantity: string;
   instructionQuantity: string;
-  completedQuantity: string;
-  shippedQuantity: string;
+  processCounts: Record<string, number>;
   dueDate: string;
-  status: string;
+  createdTime: string;
 };
 
 type ProductionOrderResponse = {
-  productionId: string;
   purchaseId: string | null;
+  customer: string | null;
+  dueDate: string | null;
   productName: string | null;
   purchaseQuantity: number | null;
   instructionQuantity: number | null;
   productQrQuantity: number | null;
   completedQuantity: number | null;
   shippedQuantity: number | null;
-  status: string | null;
+  createdTime: string | null;
+  processCounts: Record<string, number> | null;
 };
 
 type ApiResponse<T> = {
@@ -44,26 +44,28 @@ type ApiResponse<T> = {
 const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
 type SortKey =
-  | "productionOrderNo"
   | "orderNo"
   | "customer"
   | "product"
   | "instructionQuantity"
-  | "completedQuantity"
-  | "shippedQuantity"
   | "dueDate"
-  | "status";
+  | "createdTime";
 
 const sortButtons: ListOption<SortKey>[] = [
-  { label: "생산지시번호", key: "productionOrderNo" },
   { label: "발주번호", key: "orderNo" },
   { label: "고객사", key: "customer" },
-  { label: "품명", key: "product" },
-  { label: "지시수량", key: "instructionQuantity" },
-  { label: "완료수량", key: "completedQuantity" },
-  { label: "출하수량", key: "shippedQuantity" },
+  { label: "제품명", key: "product" },
+  { label: "수량", key: "instructionQuantity" },
   { label: "납기", key: "dueDate" },
-  { label: "상태", key: "status" },
+  { label: "생성시간", key: "createdTime" },
+];
+
+const productProcessRows = [
+  { key: "PRODUCTION_INSTRUCTION_CHECK", label: "생산지시" },
+  { key: "ASSEMBLY", label: "조립" },
+  { key: "FUNCTION_TEST", label: "기능검사" },
+  { key: "SHIPMENT_INSPECTION", label: "출하검사" },
+  { key: "SHIPMENT", label: "출하중" },
 ];
 
 const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
@@ -80,35 +82,21 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
     render: (row) => row.orderNo,
   },
   {
-    header: "생산지시번호",
     align: "center",
-    key: "productionOrderNo",
-    render: (row) => row.productionOrderNo,
-  },
-  {
     header: "고객사",
     key: "customer",
     render: (row) => row.customer,
   },
   {
-    header: "품명",
+    header: "제품명",
     key: "product",
     render: (row) => row.product,
   },
   {
-    header: "지시수량",
+    cellClassName: "p-0 align-middle font-bold text-slate-900",
+    header: "수량",
     key: "instructionQuantity",
-    render: (row) => row.instructionQuantity,
-  },
-  {
-    header: "완료수량",
-    key: "completedQuantity",
-    render: (row) => row.completedQuantity,
-  },
-  {
-    header: "출하수량",
-    key: "shippedQuantity",
-    render: (row) => row.shippedQuantity,
+    render: (row) => <ProductionQuantityTable processCounts={row.processCounts} quantity={row.instructionQuantity} />,
   },
   {
     header: "납기",
@@ -116,15 +104,45 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
     render: (row) => row.dueDate,
   },
   {
-    header: "상태",
-    key: "status",
-    render: (row) => (
-      <span className="rounded-full bg-[#eef4ff] px-3 py-1 font-bold text-slate-900">
-        {row.status}
-      </span>
-    ),
+    align: "center",
+    header: "생성시간",
+    key: "createdTime",
+    render: (row) => row.createdTime,
   },
 ];
+
+function ProductionQuantityTable({
+  processCounts,
+  quantity,
+}: {
+  processCounts: Record<string, number>;
+  quantity: string;
+}) {
+  return (
+    <table className="w-full table-fixed border-collapse overflow-hidden rounded border border-slate-200 text-xs">
+      <tbody>
+        <tr className="border-b border-slate-100">
+          <th className="w-2/3 bg-slate-100 px-2 py-1 text-left font-bold text-slate-700">
+            총 수량
+          </th>
+          <td className="w-1/3 px-2 py-1 text-right font-bold text-slate-950">
+            {quantity}
+          </td>
+        </tr>
+        {productProcessRows.map((process) => (
+          <tr className="border-b border-slate-100 last:border-b-0" key={process.key}>
+            <th className="w-2/3 bg-slate-50 px-2 py-1 text-left font-bold text-slate-600">
+              {process.label}
+            </th>
+            <td className="w-1/3 px-2 py-1 text-right font-bold text-slate-950">
+              {processCounts[process.key] ?? 0}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 export default function ProductionOrdersPage() {
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
@@ -132,7 +150,7 @@ export default function ProductionOrdersPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [checkedOrderIds, setCheckedOrderIds] = useState<number[]>([]);
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
-  const [searchField, setSearchField] = useState<SortKey>("productionOrderNo");
+  const [searchField, setSearchField] = useState<SortKey>("orderNo");
   const [searchText, setSearchText] = useState("");
   const {
     closeOrderSidebar,
@@ -178,7 +196,7 @@ export default function ProductionOrdersPage() {
 
       setOrders((current) =>
         current.map((order) =>
-          order.productionOrderNo === previousProductionOrderNo
+          order.orderNo === previousProductionOrderNo
             ? { ...toProductionOrderRow(updatedOrder, order.id - 1), id: order.id }
             : order,
         ),
@@ -190,7 +208,7 @@ export default function ProductionOrdersPage() {
 
       setOrders((current) =>
         current
-          .filter((order) => order.productionOrderNo !== deletedProductionOrderNo)
+          .filter((order) => order.orderNo !== deletedProductionOrderNo)
           .map((order, index) => ({ ...order, id: index + 1 })),
       );
       setSelectedOrderId(null);
@@ -269,10 +287,12 @@ export default function ProductionOrdersPage() {
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={handleSort}
+          onDelete={() => console.log("delete selected production orders", checkedOrderIds)}
           options={sortButtons}
           searchField={searchField}
           searchOptions={searchOptions}
           searchText={searchText}
+          selectedCount={checkedOrderIds.length}
           sortConditions={sortConditions}
         />
 
@@ -293,7 +313,7 @@ export default function ProductionOrdersPage() {
 }
 
 function getSortValue(order: ProductionOrder, key: SortKey) {
-  if (["instructionQuantity", "completedQuantity", "shippedQuantity"].includes(key)) {
+  if (key === "instructionQuantity") {
     return Number(order[key].replaceAll(",", ""));
   }
 
@@ -310,33 +330,30 @@ function toSidebarOrder(order: ProductionOrder): Order {
     detailType: "production",
     orderNo: order.orderNo,
     orderDate: "-",
-    productionOrderNo: order.productionOrderNo,
+    productionOrderNo: order.orderNo,
     customer: order.customer,
     product: order.product,
     quantity: order.instructionQuantity,
     instructionQuantity: order.instructionQuantity,
-    completedQuantity: order.completedQuantity,
-    shippedQuantity: order.shippedQuantity,
     unitPrice: "-",
     dueDate: order.dueDate,
-    status: order.status,
-    memo: `${order.productionOrderNo} 생산지시입니다. 완료수량 ${order.completedQuantity}, 출하수량 ${order.shippedQuantity}`,
+    status: "-",
+    createdAt: order.createdTime,
+    memo: `${order.orderNo} 생산지시입니다. 생산수량 ${order.instructionQuantity}`,
   };
 }
 
 function toProductionOrderRow(order: OrderProductionForm, index: number): ProductionOrder {
   return {
     id: index + 1,
-    productionOrderNo: order.productionOrderNo,
     orderNo: order.orderNo,
     customer: order.customer || "-",
     product: order.product || "-",
     orderQuantity: order.instructionQuantity || "0",
     instructionQuantity: order.instructionQuantity || "0",
-    completedQuantity: order.completedQuantity || "0",
-    shippedQuantity: order.shippedQuantity || "0",
+    processCounts: createInitialProcessCounts(Number(order.instructionQuantity || 0)),
     dueDate: order.dueDate ? order.dueDate.replaceAll("-", ".") : "-",
-    status: order.status,
+    createdTime: "-",
   };
 }
 
@@ -345,32 +362,35 @@ function toProductionOrderRowFromApi(order: ProductionOrderResponse, index: numb
 
   return {
     id: index + 1,
-    productionOrderNo: order.productionId,
     orderNo: order.purchaseId ?? "-",
-    customer: "-",
+    customer: order.customer ?? "-",
     product: order.productName ?? "-",
     orderQuantity: String(order.purchaseQuantity ?? instructionQuantity),
     instructionQuantity,
-    completedQuantity: String(order.completedQuantity ?? 0),
-    shippedQuantity: String(order.shippedQuantity ?? 0),
-    dueDate: "-",
-    status: toProductionStatusLabel(order.status),
+    processCounts: normalizeProcessCounts(order.processCounts, Number(instructionQuantity)),
+    dueDate: order.dueDate ? order.dueDate.replaceAll("-", ".") : "-",
+    createdTime: formatDateTime(order.createdTime),
   };
 }
 
-function toProductionStatusLabel(status: string | null) {
-  switch (status) {
-    case "WAITING":
-      return "지시대기";
-    case "IN_PROGRESS":
-      return "생산중";
-    case "COMPLETED":
-      return "완료";
-    case "SHIPPED":
-      return "출하완료";
-    case "CANCELED":
-      return "취소";
-    default:
-      return status ?? "-";
+function createInitialProcessCounts(instructionQuantity: number) {
+  return productProcessRows.reduce<Record<string, number>>((counts, process, index) => {
+    counts[process.key] = index === 0 ? instructionQuantity : 0;
+    return counts;
+  }, {});
+}
+
+function normalizeProcessCounts(processCounts: Record<string, number> | null, instructionQuantity: number) {
+  if (!processCounts) {
+    return createInitialProcessCounts(instructionQuantity);
   }
+
+  return productProcessRows.reduce<Record<string, number>>((counts, process) => {
+    counts[process.key] = processCounts?.[process.key] ?? 0;
+    return counts;
+  }, {});
+}
+
+function formatDateTime(value: string | null) {
+  return value ? value.replace("T", " ").replaceAll("-", ".") : "-";
 }

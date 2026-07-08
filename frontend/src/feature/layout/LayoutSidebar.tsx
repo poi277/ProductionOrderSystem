@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { getCategoryActiveClass } from "../common/categoryActiveStyles";
+import type { CategoryActiveKey } from "../common/categoryActiveStyles";
 
 type IconName =
   | "dashboard"
@@ -19,26 +21,28 @@ type IconName =
   | "lock";
 
 type Menu = {
+  activeKey: CategoryActiveKey;
   label: string;
   href: string;
   icon: IconName;
 };
 
 const mainMenus: Menu[] = [
-  { label: "대시보드", href: "/dashboard", icon: "dashboard" },
-  { label: "스캔", href: "/scan", icon: "scan" },
-  { label: "발주서", href: "/orders", icon: "orders" },
-  { label: "생산지시", href: "/production-orders", icon: "production" },
-  { label: "생산현황", href: "/product-processes", icon: "process" },
-  { label: "납품출하", href: "/shipments", icon: "shipment" },
-  { label: "라벨", href: "/labels", icon: "label" },
-  { label: "이력", href: "/histories", icon: "history" },
-  { label: "QR조회", href: "/qr-search", icon: "qr" },
+  { activeKey: "dashboard", label: "대시보드", href: "/dashboard", icon: "dashboard" },
+  { activeKey: "order", label: "발주서", href: "/orders", icon: "orders" },
+  { activeKey: "production", label: "생산지시", href: "/production-orders", icon: "production" },
+  { activeKey: "process", label: "생산현황", href: "/product-processes", icon: "process" },
+  { activeKey: "shipment", label: "납품출하", href: "/shipments", icon: "shipment" },
+  { activeKey: "label", label: "라벨", href: "/labels", icon: "label" },
+  { activeKey: "history", label: "공정이력", href: "/process-histories", icon: "history" },
+  { activeKey: "history", label: "제품이력", href: "/histories", icon: "history" },
+  { activeKey: "qr", label: "QR조회", href: "/qr-search", icon: "qr" },
+  { activeKey: "scan", label: "스캔", href: "/scan", icon: "scan" },
 ];
 
 const settingMenus: Menu[] = [
-  { label: "사용자 관리", href: "/settings/users", icon: "user" },
-  { label: "권한 설정", href: "/settings/permissions", icon: "lock" },
+  { activeKey: "settings", label: "사용자 관리", href: "/settings/users", icon: "user" },
+  { activeKey: "settings", label: "권한 설정", href: "/settings/permissions", icon: "lock" },
 ];
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
@@ -139,7 +143,7 @@ export default function Sidebar() {
                       isCollapsed ? "md:w-11 md:px-3" : "w-full px-3"
                     } ${
                       isActive
-                        ? "bg-slate-950 text-white"
+                        ? getCategoryActiveClass(menu.activeKey)
                         : "text-slate-500 hover:bg-slate-100 hover:text-slate-950"
                     }`}
                     data-sidebar-collapsed-item
@@ -170,7 +174,7 @@ export default function Sidebar() {
               isCollapsed ? "md:w-11 md:px-3" : "w-full justify-between px-3"
             } ${
               isSettingsActive
-                ? "bg-slate-100 text-slate-950"
+                ? getCategoryActiveClass("settings")
                 : "text-slate-500 hover:bg-slate-100 hover:text-slate-950"
             }`}
             data-sidebar-collapsed-item
@@ -215,7 +219,7 @@ export default function Sidebar() {
                     <Link
                       className={`flex h-9 items-center rounded-lg px-3 text-sm font-semibold transition-colors ${
                         isActive
-                          ? "bg-slate-950 text-white"
+                          ? getCategoryActiveClass(menu.activeKey)
                           : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                       }`}
                       href={menu.href}

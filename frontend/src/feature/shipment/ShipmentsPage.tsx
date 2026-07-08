@@ -14,21 +14,21 @@ type Shipment = {
   productionOrderNo: string;
   productProcessNo: string;
   productQr: string;
+  productName: string;
   processName: string;
-  isCompleted: string;
   shippedAt: string;
   memo: string;
-  createdAt: string;
   updatedAt: string;
+  createdAt: string;
 };
 
 type ShipmentResponse = {
   shipmentId: string;
   productQr: string | null;
+  productName: string | null;
   productionId: string | null;
   productProcessNo: string | null;
   processName: string | null;
-  completed: boolean | null;
   shippedAt: string | null;
   memo: string | null;
   createdAt: string | null;
@@ -49,12 +49,12 @@ const sortButtons: ListOption<SortKey>[] = [
   { label: "생산지시번호", key: "productionOrderNo" },
   { label: "제품공정번호", key: "productProcessNo" },
   { label: "제품 QR", key: "productQr" },
+  { label: "제품명", key: "productName" },
   { label: "출하기준 공정", key: "processName" },
-  { label: "출하완료", key: "isCompleted" },
   { label: "출하일자", key: "shippedAt" },
   { label: "출하시 비고", key: "memo" },
-  { label: "등록일시", key: "createdAt" },
   { label: "수정일시", key: "updatedAt" },
+  { label: "생성시간", key: "createdAt" },
 ];
 
 const shipmentColumns: DataListColumn<Shipment>[] = [
@@ -62,20 +62,12 @@ const shipmentColumns: DataListColumn<Shipment>[] = [
   { align: "center", header: "생산지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "제품공정번호", key: "productProcessNo", render: (row) => row.productProcessNo },
   { align: "center", header: "제품 QR", key: "productQr", render: (row) => row.productQr },
+  { header: "제품명", key: "productName", render: (row) => row.productName },
   { header: "출하 기준 공정", key: "processName", render: (row) => row.processName },
-  {
-    header: "출하완료",
-    key: "isCompleted",
-    render: (row) => (
-      <span className="rounded-full bg-[#eef4ff] px-3 py-1 font-bold text-slate-900">
-        {row.isCompleted}
-      </span>
-    ),
-  },
   { align: "center", header: "출하일자", key: "shippedAt", render: (row) => row.shippedAt },
   { header: "출하시 비고", key: "memo", render: (row) => row.memo },
-  { align: "center", header: "등록일시", key: "createdAt", render: (row) => row.createdAt },
   { align: "center", header: "수정일시", key: "updatedAt", render: (row) => row.updatedAt },
+  { align: "center", header: "생성시간", key: "createdAt", render: (row) => row.createdAt },
 ];
 
 export default function ShipmentsPage() {
@@ -184,10 +176,12 @@ export default function ShipmentsPage() {
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={handleSort}
+          onDelete={() => console.log("delete selected shipments", checkedRowIds)}
           options={sortButtons}
           searchField={searchField}
           searchOptions={searchOptions}
           searchText={searchText}
+          selectedCount={checkedRowIds.length}
           sortConditions={sortConditions}
         />
         <DataListTable
@@ -234,16 +228,16 @@ function toSidebarOrder(row: Shipment): Order {
     productionOrderNo: row.productionOrderNo,
     productProcessNo: row.productProcessNo,
     productQr: row.productQr,
+    product: row.productName,
     processName: row.processName,
     shippedAt: row.shippedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     customer: "-",
-    product: row.productQr,
     quantity: "-",
     unitPrice: "-",
     dueDate: row.shippedAt,
-    status: row.isCompleted,
+    status: "-",
     memo: row.memo,
   };
 }
@@ -254,8 +248,8 @@ function toShipmentRow(shipment: OrderShipmentForm, index: number): Shipment {
     productionOrderNo: shipment.productionOrderNo,
     productProcessNo: shipment.productProcessNo,
     productQr: shipment.productQr,
+    productName: shipment.productQr,
     processName: shipment.processName,
-    isCompleted: shipment.isCompleted,
     shippedAt: toDisplayDateTime(shipment.shippedAt),
     memo: shipment.memo || "-",
     createdAt: toDisplayDateTime(shipment.createdAt),
@@ -269,8 +263,8 @@ function toShipmentRowFromApi(shipment: ShipmentResponse, index: number): Shipme
     productionOrderNo: shipment.productionId ?? "-",
     productProcessNo: shipment.productProcessNo ?? shipment.shipmentId,
     productQr: shipment.productQr ?? "-",
+    productName: shipment.productName ?? "-",
     processName: shipment.processName ?? "-",
-    isCompleted: shipment.completed ? "완료" : "대기",
     shippedAt: toDisplayDateTime(shipment.shippedAt ?? ""),
     memo: shipment.memo ?? "-",
     createdAt: toDisplayDateTime(shipment.createdAt ?? ""),

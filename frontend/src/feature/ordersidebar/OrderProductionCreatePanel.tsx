@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import OrderProductionFormCard from "./OrderProductionFormCard";
 import type { OrderProductionForm } from "./OrderProductionFormCard";
 
 type OrderProductionCreatePanelProps = {
   onCancel: () => void;
+  submitButtonClassName: string;
 };
 
 type ApiResponse<T> = {
@@ -16,7 +17,6 @@ type ApiResponse<T> = {
 };
 
 type OrderProductionResponse = {
-  productionId: string;
   purchaseId: string | null;
   productName: string | null;
   purchaseQuantity: number | null;
@@ -39,25 +39,14 @@ const text = {
   title: "새 생산지시 입력",
 };
 
-function createProductionOrderNo() {
-  const now = new Date();
-  const date = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("");
-  const sequence = String(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()).padStart(5, "0");
-
-  return `PRD-${date}-${sequence}`;
-}
-
-export default function OrderProductionCreatePanel({ onCancel }: OrderProductionCreatePanelProps) {
+export default function OrderProductionCreatePanel({ onCancel, submitButtonClassName }: OrderProductionCreatePanelProps) {
   const initialForm = useMemo<OrderProductionForm>(
     () => ({
       orderNo: "",
-      productionOrderNo: createProductionOrderNo(),
       customer: "",
       product: "",
+      productCodePrefix: "",
+      lotNo: "",
       instructionQuantity: "",
       completedQuantity: "0",
       shippedQuantity: "0",
@@ -67,8 +56,33 @@ export default function OrderProductionCreatePanel({ onCancel }: OrderProduction
     [],
   );
   const [form, setForm] = useState<OrderProductionForm>(initialForm);
+  const [orderNoOptions, setOrderNoOptions] = useState<string[]>([]);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [submitMessage, setSubmitMessage] = useState("");
+
+  useEffect(() => {
+    const loadProductionOrderNumbers = async () => {
+      try {
+        const response = await fetch(`${orderApiBaseUrl}/productions`);
+
+        if (!response.ok) {
+          setOrderNoOptions([]);
+          return;
+        }
+
+        const result = (await response.json()) as ApiResponse<OrderProductionResponse[]>;
+        const purchaseIds = result.data
+          .map((order) => order.purchaseId)
+          .filter((purchaseId): purchaseId is string => Boolean(purchaseId));
+
+        setOrderNoOptions(Array.from(new Set(purchaseIds)));
+      } catch {
+        setOrderNoOptions([]);
+      }
+    };
+
+    void loadProductionOrderNumbers();
+  }, []);
 
   const updateForm = (key: keyof OrderProductionForm, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -86,15 +100,17 @@ export default function OrderProductionCreatePanel({ onCancel }: OrderProduction
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          productionId: form.productionOrderNo,
-          purchaseId: form.orderNo || null,
-          productName: form.product,
+          purchaseId: form.orderNo,
+          productCodePrefix: form.productCodePrefix,
+          lot: form.lotNo,
+          productionQuantity: form.instructionQuantity ? Number(form.instructionQuantity) : null,
+          productName: form.productCodePrefix,
           purchaseQuantity: form.instructionQuantity ? Number(form.instructionQuantity) : null,
           instructionQuantity: form.instructionQuantity ? Number(form.instructionQuantity) : null,
           productQrQuantity: form.instructionQuantity ? Number(form.instructionQuantity) : null,
-          completedQuantity: form.completedQuantity ? Number(form.completedQuantity) : 0,
-          shippedQuantity: form.shippedQuantity ? Number(form.shippedQuantity) : 0,
-          status: toProductionStatus(form.status),
+          completedQuantity: 0,
+          shippedQuantity: 0,
+          status: "WAITING",
         }),
       });
 
@@ -102,12 +118,10 @@ export default function OrderProductionCreatePanel({ onCancel }: OrderProduction
         throw new Error(text.saveError);
       }
 
-      const result = (await response.json()) as ApiResponse<OrderProductionResponse>;
-
-      window.dispatchEvent(new CustomEvent<OrderProductionResponse>("production-order-created", { detail: result.data }));
+      await response.json();
       setSubmitStatus("success");
       setSubmitMessage(text.saveSuccess);
-      setForm({ ...initialForm, productionOrderNo: createProductionOrderNo() });
+      setForm(initialForm);
     } catch (error) {
       setSubmitStatus("error");
       setSubmitMessage(error instanceof Error ? error.message : text.saveUnknownError);
@@ -116,11 +130,17 @@ export default function OrderProductionCreatePanel({ onCancel }: OrderProduction
 
   return (
     <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleSubmit}>
-      <OrderProductionFormCard form={form} onChange={updateForm} title={text.title} />
+      <OrderProductionFormCard
+        compactCreate
+        form={form}
+        onChange={updateForm}
+        orderNoOptions={orderNoOptions}
+        title=""
+      />
 
       <div className="flex gap-2">
         <button
-          className="h-8 flex-1 rounded-md bg-[#143f80] text-xs font-bold text-white disabled:bg-slate-300"
+          className={`h-8 flex-1 rounded-md ${submitButtonClassName} text-xs font-bold disabled:bg-slate-300`}
           disabled={submitStatus === "saving"}
           type="submit"
         >
@@ -142,21 +162,4 @@ export default function OrderProductionCreatePanel({ onCancel }: OrderProduction
       )}
     </form>
   );
-}
-
-function toProductionStatus(status: string) {
-  switch (status) {
-    case "지시대기":
-      return "WAITING";
-    case "생산중":
-      return "IN_PROGRESS";
-    case "완료":
-      return "COMPLETED";
-    case "출하완료":
-      return "SHIPPED";
-    case "취소":
-      return "CANCELED";
-    default:
-      return "WAITING";
-  }
 }

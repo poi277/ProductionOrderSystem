@@ -10,12 +10,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.poi.orderSystem.features.DTO.OrderLabelRequest;
 import com.poi.orderSystem.features.DTO.OrderHistoryRequest;
 import com.poi.orderSystem.features.DTO.OrderProductProcessRequest;
 import com.poi.orderSystem.features.DTO.OrderProductionRequest;
 import com.poi.orderSystem.features.DTO.OrderPurchaseRequest;
-import com.poi.orderSystem.features.DTO.OrderShipmentRequest;
 import com.poi.orderSystem.features.util.ApiResponse;
 
 import jakarta.validation.Valid;
@@ -62,17 +60,17 @@ public class OrderController {
 		return ResponseEntity.ok().body(new ApiResponse(true, "production order saved", orderService.saveProduction(request)));
 	}
 
-	@PutMapping("/productions/{productionId}")
+	@PutMapping("/productions/{purchaseId}")
 	public ResponseEntity<ApiResponse> putProduction(
-			@PathVariable("productionId") String productionId,
+			@PathVariable("purchaseId") String purchaseId,
 			@Valid @RequestBody OrderProductionRequest request
 	) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "production order updated", orderService.updateProduction(productionId, request)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "production order updated", orderService.updateProduction(purchaseId, request)));
 	}
 
-	@DeleteMapping("/productions/{productionId}")
-	public ResponseEntity<ApiResponse> deleteProduction(@PathVariable("productionId") String productionId) {
-		orderService.deleteProduction(productionId);
+	@DeleteMapping("/productions/{purchaseId}")
+	public ResponseEntity<ApiResponse> deleteProduction(@PathVariable("purchaseId") String purchaseId) {
+		orderService.deleteProduction(purchaseId);
 		return ResponseEntity.ok().body(new ApiResponse(true, "production order deleted"));
 	}
 
@@ -81,23 +79,18 @@ public class OrderController {
 		return ResponseEntity.ok().body(new ApiResponse(true, "product processes loaded", orderService.findProductProcesses()));
 	}
 
-	@PostMapping("/product-processes")
-	public ResponseEntity<ApiResponse> postProductProcess(@Valid @RequestBody OrderProductProcessRequest request) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "product process saved", orderService.saveProductProcess(request)));
+	@DeleteMapping("/product-processes/{productQr}")
+	public ResponseEntity<ApiResponse> cancelProductProcess(@PathVariable("productQr") String productQr) {
+		orderService.cancelProduct(productQr);
+		return ResponseEntity.ok().body(new ApiResponse(true, "product canceled"));
 	}
 
 	@PutMapping("/product-processes/{productQr}")
 	public ResponseEntity<ApiResponse> putProductProcess(
 			@PathVariable("productQr") String productQr,
-			@Valid @RequestBody OrderProductProcessRequest request
+			@RequestBody OrderProductProcessRequest request
 	) {
 		return ResponseEntity.ok().body(new ApiResponse(true, "product process updated", orderService.updateProductProcess(productQr, request)));
-	}
-
-	@DeleteMapping("/product-processes/{productQr}")
-	public ResponseEntity<ApiResponse> deleteProductProcess(@PathVariable("productQr") String productQr) {
-		orderService.deleteProductProcess(productQr);
-		return ResponseEntity.ok().body(new ApiResponse(true, "product process deleted"));
 	}
 
 	@GetMapping("/shipments")
@@ -105,23 +98,10 @@ public class OrderController {
 		return ResponseEntity.ok().body(new ApiResponse(true, "shipments loaded", orderService.findShipments()));
 	}
 
-	@PostMapping("/shipments")
-	public ResponseEntity<ApiResponse> postShipment(@Valid @RequestBody OrderShipmentRequest request) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "shipment saved", orderService.saveShipment(request)));
-	}
-
-	@PutMapping("/shipments/{shipmentId}")
-	public ResponseEntity<ApiResponse> putShipment(
-			@PathVariable("shipmentId") String shipmentId,
-			@Valid @RequestBody OrderShipmentRequest request
-	) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "shipment updated", orderService.updateShipment(shipmentId, request)));
-	}
-
-	@DeleteMapping("/shipments/{shipmentId}")
-	public ResponseEntity<ApiResponse> deleteShipment(@PathVariable("shipmentId") String shipmentId) {
-		orderService.deleteShipment(shipmentId);
-		return ResponseEntity.ok().body(new ApiResponse(true, "shipment deleted"));
+	@DeleteMapping("/shipments/{productQr}")
+	public ResponseEntity<ApiResponse> cancelShipmentProduct(@PathVariable("productQr") String productQr) {
+		orderService.cancelProduct(productQr);
+		return ResponseEntity.ok().body(new ApiResponse(true, "product canceled"));
 	}
 
 	@GetMapping("/labels")
@@ -129,28 +109,19 @@ public class OrderController {
 		return ResponseEntity.ok().body(new ApiResponse(true, "labels loaded", orderService.findLabels()));
 	}
 
-	@PostMapping("/labels")
-	public ResponseEntity<ApiResponse> postLabel(@Valid @RequestBody OrderLabelRequest request) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "label saved", orderService.saveLabel(request)));
-	}
-
-	@PutMapping("/labels/{productQr}")
-	public ResponseEntity<ApiResponse> putLabel(
-			@PathVariable("productQr") String productQr,
-			@Valid @RequestBody OrderLabelRequest request
-	) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "label updated", orderService.updateLabel(productQr, request)));
-	}
-
-	@DeleteMapping("/labels/{productQr}")
-	public ResponseEntity<ApiResponse> deleteLabel(@PathVariable("productQr") String productQr) {
-		orderService.deleteLabel(productQr);
-		return ResponseEntity.ok().body(new ApiResponse(true, "label deleted"));
-	}
-
 	@GetMapping("/histories")
 	public ResponseEntity<ApiResponse> getHistories() {
 		return ResponseEntity.ok().body(new ApiResponse(true, "histories loaded", orderService.findHistories()));
+	}
+
+	@GetMapping("/process-histories")
+	public ResponseEntity<ApiResponse> getProcessHistories() {
+		return ResponseEntity.ok().body(new ApiResponse(true, "process histories loaded", orderService.findProcessHistories()));
+	}
+
+	@GetMapping("/histories/{historyId}")
+	public ResponseEntity<ApiResponse> getHistory(@PathVariable("historyId") Long historyId) {
+		return ResponseEntity.ok().body(new ApiResponse(true, "history loaded", orderService.findHistory(historyId)));
 	}
 
 	@PostMapping("/histories")

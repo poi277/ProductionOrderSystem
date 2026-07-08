@@ -1,9 +1,19 @@
 package com.poi.orderSystem.features.entity;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,25 +25,22 @@ import lombok.Setter;
 public class OrderProduction {
 
 	@Id
-	private String productionId;
-
 	private String purchaseId;
-	private String productName;
-	private Integer purchaseQuantity;
-	private Integer instructionQuantity;
-	private Integer productQrQuantity;
-	private Integer completedQuantity;
-	private Integer shippedQuantity;
 
-	@Enumerated(EnumType.STRING)
-	private ProductionStatus status;
+	@JsonIgnore
+	@OneToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "purchaseId", referencedColumnName = "purchaseId", insertable = false, updatable = false)
+	private OrderPurchase purchase;
 
-	public enum ProductionStatus {
-		WAITING, // 생산 시작 전 대기 상태
-		IN_PROGRESS, // 생산 또는 공정이 진행 중인 상태
-		COMPLETED, // 지시 수량 생산이 완료된 상태
-		SHIPPED, // 생산품 출하가 완료된 상태
-		CANCELED // 생산지시가 취소된 상태
+	@JsonIgnore
+	@OneToMany(mappedBy = "production", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, orphanRemoval = true)
+
+	private List<OrderProduct> products;
+
+	private LocalDateTime createdTime;
+
+	@PrePersist
+	private void onCreate() {
+		this.createdTime = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
 	}
-
 }
