@@ -2,27 +2,32 @@
 
 import { useEffect, useState } from "react";
 import DataListTable from "../common/DataListTable";
+import { formatKoreanDateTimeWithoutYear } from "../common/dateFormat";
 import ListToolbar from "../common/ListToolbar";
 import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
-import type { OrderProcessForm } from "../ordersidebar/OrderProcessFormCard";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
 import type { Order } from "../order/OrdersTypes";
+import type { OrderProcessForm } from "../ordersidebar/OrderProcessFormCard";
 
 type ProductProcess = {
   id: number;
-  productionOrderNo: string;
-  productQr: string;
-  productName: string;
-  lotNo: string;
-  processSequence: string;
   createdTime: string;
+  customer: string;
+  productionOrderNo: string;
+  productName: string;
+  quantity: string;
+  lotNo: string;
+  productQr: string;
+  processSequence: string;
 };
 
 type ProductProcessResponse = {
   productQr: string;
   productionId: string | null;
+  customer: string | null;
   productName: string | null;
+  quantity: number | null;
   lot: string | null;
   process: string | null;
   processName: string | null;
@@ -44,28 +49,30 @@ const productProcessLabels: Record<string, string> = {
   ASSEMBLY: "조립",
   FUNCTION_TEST: "기능검사",
   SHIPMENT_INSPECTION: "출하검사",
-  SHIPMENT: "출하중",
+  SHIPMENT: "출하완료",
 };
 
 type SortKey = keyof Omit<ProductProcess, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
-  { label: "생산지시번호", key: "productionOrderNo" },
-  { label: "제품 QR", key: "productQr" },
-  { label: "제품명", key: "productName" },
-  { label: "LOT 번호", key: "lotNo" },
-  { label: "공정순서", key: "processSequence" },
-  { label: "생성시간", key: "createdTime" },
+  { label: "날짜", key: "createdTime" },
+  { label: "고객사", key: "customer" },
+  { label: "지시번호", key: "productionOrderNo" },
+  { label: "품명", key: "productName" },
+  { label: "수량", key: "quantity" },
+  { label: "LOT", key: "lotNo" },
+  { label: "QR", key: "productQr" },
 ];
 
 const processColumns: DataListColumn<ProductProcess>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
-  { align: "center", header: "생산지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
-  { align: "center", header: "제품 QR", key: "productQr", render: (row) => row.productQr },
-  { header: "제품명", key: "productName", render: (row) => row.productName },
-  { align: "center", header: "LOT 번호", key: "lotNo", render: (row) => row.lotNo },
-  { align: "center", header: "공정순서", key: "processSequence", render: (row) => row.processSequence },
-  { align: "center", header: "생성시간", key: "createdTime", render: (row) => row.createdTime },
+  { align: "center", header: "날짜", key: "createdTime", render: (row) => row.createdTime },
+  { align: "center", header: "고객사", key: "customer", render: (row) => row.customer },
+  { align: "center", header: "지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
+  { header: "품명", key: "productName", render: (row) => row.productName },
+  { align: "center", header: "수량", key: "quantity", render: (row) => row.quantity },
+  { align: "center", header: "LOT", key: "lotNo", render: (row) => row.lotNo },
+  { align: "center", header: "QR", key: "productQr", render: (row) => row.productQr },
 ];
 
 export default function ProductProcessesPage() {
@@ -76,10 +83,7 @@ export default function ProductProcessesPage() {
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
   const [searchField, setSearchField] = useState<SortKey>("productQr");
   const [searchText, setSearchText] = useState("");
-  const {
-    closeOrderSidebar,
-    openOrderDetailSidebar,
-  } = useOrderSidebar();
+  const { closeOrderSidebar, openOrderDetailSidebar } = useOrderSidebar();
 
   useEffect(() => {
     const loadProcesses = async () => {
@@ -152,10 +156,6 @@ export default function ProductProcessesPage() {
   );
   const sortedRows = sortRows(filteredRows, sortConditions);
 
-  const handleSort = (key: SortKey) => {
-    setSortConditions((current) => updateSortConditions(current, key));
-  };
-
   const handleToggleCheckbox = (row: ProductProcess) => {
     setCheckedRowIds((current) =>
       current.includes(row.id) ? current.filter((rowId) => rowId !== row.id) : [...current, row.id],
@@ -167,14 +167,44 @@ export default function ProductProcessesPage() {
     openOrderDetailSidebar(toSidebarOrder(row));
   };
 
+  const handleDeleteSelectedRows = async () => {
+    const selectedRows = processes.filter((row) => checkedRowIds.includes(row.id));
+
+    if (selectedRows.length === 0 || !window.confirm(`${selectedRows.length}개를 정말로 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    const responses = await Promise.all(
+      selectedRows.map((row) =>
+        fetch(`${orderApiBaseUrl}/product-processes/${encodeURIComponent(row.productQr)}`, {
+          method: "DELETE",
+        }),
+      ),
+    );
+
+    if (responses.some((response) => !response.ok)) {
+      window.alert("선택한 생산현황 삭제에 실패했습니다.");
+      return;
+    }
+
+    setProcesses((current) =>
+      current
+        .filter((row) => !checkedRowIds.includes(row.id))
+        .map((row, index) => ({ ...row, id: index + 1 })),
+    );
+    setCheckedRowIds([]);
+    setSelectedRowId(null);
+    closeOrderSidebar();
+  };
+
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">
       <section className="flex min-w-0 flex-1 flex-col px-5 py-5">
         <ListToolbar
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
-          onSort={handleSort}
-          onDelete={() => console.log("delete selected product processes", checkedRowIds)}
+          onSort={(key) => setSortConditions((current) => updateSortConditions(current, key))}
+          onDelete={handleDeleteSelectedRows}
           options={sortButtons}
           searchField={searchField}
           searchOptions={searchOptions}
@@ -185,13 +215,13 @@ export default function ProductProcessesPage() {
         <DataListTable
           checkedRowIds={checkedRowIds}
           columns={processColumns}
+          emptyMessage={loadError || "리스트가 비어있습니다."}
           getRowId={(row) => row.id}
           onBlankClick={closeOrderSidebar}
           onCheckboxChange={handleToggleCheckbox}
           onRowClick={handleSelectRow}
           rows={sortedRows}
           selectedRowId={selectedRowId}
-          emptyMessage={loadError || "리스트가 비어있습니다."}
         />
       </section>
     </main>
@@ -222,16 +252,16 @@ function toSidebarOrder(row: ProductProcess): Order {
     id: row.id,
     detailType: "process",
     orderNo: row.productionOrderNo,
-    orderDate: "-",
+    orderDate: row.createdTime,
     productionOrderNo: row.productionOrderNo,
     productQr: row.productQr,
     lotNo: row.lotNo,
     processName: row.processSequence,
     processSequence: row.processSequence,
     startedAt: "-",
-    customer: "-",
+    customer: row.customer,
     product: row.productName,
-    quantity: row.processSequence,
+    quantity: row.quantity,
     unitPrice: "-",
     dueDate: "-",
     status: "-",
@@ -242,24 +272,28 @@ function toSidebarOrder(row: ProductProcess): Order {
 function toProductProcessRow(process: OrderProcessForm, index: number): ProductProcess {
   return {
     id: index + 1,
-    productionOrderNo: process.productionOrderNo,
-    productQr: process.productQr,
-    productName: process.productName || "-",
-    lotNo: process.lotNo || "-",
-    processSequence: toProductProcessLabel(process.processSequence),
     createdTime: "-",
+    customer: "-",
+    productionOrderNo: process.productionOrderNo,
+    productName: process.productName || "-",
+    quantity: "1",
+    lotNo: process.lotNo || "-",
+    productQr: process.productQr,
+    processSequence: toProductProcessLabel(process.processSequence),
   };
 }
 
 function toProductProcessRowFromApi(process: ProductProcessResponse, index: number): ProductProcess {
   return {
     id: index + 1,
+    createdTime: formatKoreanDateTimeWithoutYear(process.createdTime),
+    customer: process.customer ?? "-",
     productionOrderNo: process.productionId ?? "-",
-    productQr: process.productQr,
     productName: process.productName ?? "-",
+    quantity: String(process.quantity ?? 1),
     lotNo: process.lot ?? "-",
-    processSequence: toProductProcessLabel(process.process ?? process.processSequence),
-    createdTime: toDisplayDateTime(process.createdTime ?? ""),
+    productQr: process.productQr,
+    processSequence: process.processName ?? process.processSequence ?? toProductProcessLabel(process.process),
   };
 }
 
@@ -269,12 +303,4 @@ function toProductProcessLabel(value: string | null | undefined) {
   }
 
   return productProcessLabels[value] ?? value;
-}
-
-function toDisplayDateTime(value: string) {
-  if (!value) {
-    return "-";
-  }
-
-  return value.replace("T", " ").replaceAll("-", ".");
 }

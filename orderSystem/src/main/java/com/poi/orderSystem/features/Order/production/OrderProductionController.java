@@ -1,0 +1,55 @@
+package com.poi.orderSystem.features.Order.production;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.poi.orderSystem.features.DTO.OrderProductionRequest;
+import com.poi.orderSystem.features.util.ApiResponse;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/order/productions")
+@RequiredArgsConstructor
+public class OrderProductionController {
+
+	private final OrderProductionService orderProductionService;
+
+	@GetMapping
+	public ResponseEntity<ApiResponse> getProductions() {
+		return ResponseEntity.ok().body(new ApiResponse(true, "production orders loaded", orderProductionService.findProductions()));
+	}
+
+	@PostMapping
+	public ResponseEntity<ApiResponse> postProduction(@Valid @RequestBody OrderProductionRequest request) {
+		return ResponseEntity.ok().body(new ApiResponse(true, "production order saved", orderProductionService.saveProduction(request)));
+	}
+
+	@PutMapping("/{purchaseId}")
+	public ResponseEntity<ApiResponse> putProduction(
+			@PathVariable("purchaseId") String purchaseId,
+			@Valid @RequestBody OrderProductionRequest request
+	) {
+		return ResponseEntity.ok().body(new ApiResponse(true, "production order updated", orderProductionService.updateProduction(purchaseId, request)));
+	}
+
+	@DeleteMapping("/{purchaseId}")
+	public ResponseEntity<ApiResponse> deleteProduction(@PathVariable("purchaseId") String purchaseId) {
+		orderProductionService.deleteProduction(purchaseId);
+		return ResponseEntity.ok().body(new ApiResponse(true, "production order deleted"));
+	}
+
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<ApiResponse> handleIllegalArgumentException(IllegalArgumentException exception) {
+		return ResponseEntity.badRequest().body(new ApiResponse(false, exception.getMessage()));
+	}
+}

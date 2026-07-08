@@ -43,18 +43,6 @@ const text = {
   title: "\uc0c8\u0020\ubc1c\uc8fc\uc11c\u0020\uc785\ub825",
 };
 
-function createPurchaseId() {
-  const now = new Date();
-  const date = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("");
-  const sequence = String(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()).padStart(5, "0");
-
-  return `PO-${date}-${sequence}`;
-}
-
 function getTodayDate() {
   const now = new Date();
 
@@ -68,7 +56,7 @@ function getTodayDate() {
 export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassName }: OrderCreatePanelProps) {
   const initialForm = useMemo(
     () => ({
-      purchaseId: createPurchaseId(),
+      purchaseId: "",
       orderDate: getTodayDate(),
       customer: "",
       product: "",
@@ -76,7 +64,6 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
       unitPrice: "",
       dueDate: "",
       memo: "",
-      status: "WAITING",
     }),
     [],
   );
@@ -107,7 +94,6 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
           unitPrice: form.unitPrice ? Number(form.unitPrice) : null,
           purchaseDate: form.orderDate,
           dueDate: form.dueDate,
-          status: form.status,
           note: form.memo,
         }),
       });
@@ -122,7 +108,7 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
       setSubmitMessage(text.saveSuccess);
       window.dispatchEvent(new CustomEvent<OrderPurchaseResponse>("order-purchase-created", { detail: result.data }));
       onSave(form);
-      setForm({ ...initialForm, purchaseId: createPurchaseId() });
+      setForm(initialForm);
     } catch (error) {
       setSubmitStatus("error");
       setSubmitMessage(error instanceof Error ? error.message : text.saveUnknownError);
@@ -136,7 +122,6 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
         form={form}
         onChange={updateForm}
         showOrderDate
-        showStatus
         title=""
       />
 

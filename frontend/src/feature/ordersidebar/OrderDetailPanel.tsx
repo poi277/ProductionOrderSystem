@@ -45,7 +45,7 @@ const productProcessLabels: Record<string, string> = {
   ASSEMBLY: "조립",
   FUNCTION_TEST: "기능검사",
   SHIPMENT_INSPECTION: "출하검사",
-  SHIPMENT: "출하중",
+  SHIPMENT: "출하완료",
 };
 
 const text = {
@@ -350,7 +350,11 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
     return (
       <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleLabelSubmit}>
-        <OrderLabelFormCard disabled={!isEditing} form={labelForm ?? initialLabelForm} onChange={updateLabelForm} />
+        <OrderLabelFormCard
+          disabled={!isEditing}
+          form={labelForm ?? initialLabelForm}
+          onChange={updateLabelForm}
+        />
 
         <div className="flex gap-2">
           <button
@@ -476,7 +480,12 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
     return (
       <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleHistorySubmit}>
-        <OrderHistoryFormCard disabled={!isEditing} form={historyForm ?? initialHistoryForm} onChange={updateHistoryForm} />
+        <OrderHistoryFormCard
+          disabled={!isEditing}
+          form={historyForm ?? initialHistoryForm}
+          onChange={updateHistoryForm}
+          title=""
+        />
 
         <div className="flex gap-2">
           <button
@@ -598,6 +607,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           disabled={!isEditing}
           form={shipmentForm ?? initialShipmentForm}
           onChange={updateShipmentForm}
+          title=""
         />
 
         <div className="flex gap-2">
@@ -720,6 +730,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           disabled={!isEditing}
           form={processForm ?? initialProcessForm}
           onChange={updateProcessForm}
+          title=""
         />
 
         <div className="flex gap-2">
@@ -809,6 +820,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           disabled={!isEditing}
           form={productionForm ?? initialProductionForm}
           onChange={updateProductionForm}
+          title=""
         />
 
         <div className="flex gap-2">
@@ -882,7 +894,6 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           unitPrice: form.unitPrice ? Number(form.unitPrice) : null,
           purchaseDate: form.orderDate || null,
           dueDate: form.dueDate,
-          status: form.status,
           note: form.memo,
         }),
       });
@@ -943,8 +954,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         form={form}
         onChange={updateForm}
         showOrderDate
-        showStatus
-        title={text.title}
+        title=""
       />
 
       <div className="flex gap-2">

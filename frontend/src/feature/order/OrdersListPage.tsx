@@ -1,8 +1,8 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import type { ReactNode } from "react";
 import DataListTable from "../common/DataListTable";
+import { formatKoreanDateTimeWithoutYear, formatKoreanDateWithoutYear } from "../common/dateFormat";
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
@@ -15,11 +15,8 @@ type SortKey =
   | "customer"
   | "product"
   | "quantity"
-  | "unitPrice"
-  | "dueDate"
-  | "status"
-  | "memo"
-  | "createdAt";
+  | "totalAmount"
+  | "dueDate";
 
 type OrderPurchaseResponse = {
   purchaseId: string;
@@ -50,53 +47,42 @@ const orderListApiUrl = process.env.NEXT_PUBLIC_ORDER_LIST_API_URL ?? "http://lo
 const text = {
   customer: "\uace0\uac1d\uc0ac",
   createdAt: "\uc0dd\uc131\uc2dc\uac04",
-  dueDate: "\ub0a9\uae30",
+  dueDate: "\ub0a9\uae30\uc77c",
   empty: "\ub4f1\ub85d\ub41c\u0020\ubc1c\uc8fc\uc11c\uac00\u0020\uc5c6\uc2b5\ub2c8\ub2e4\u002e",
   loadError: "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\uc744\u0020\uc870\ud68c\ud558\uc9c0\u0020\ubabb\ud588\uc2b5\ub2c8\ub2e4\u002e",
   loading: "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\uc744\u0020\ubd88\ub7ec\uc624\ub294\u0020\uc911\uc785\ub2c8\ub2e4\u002e",
   memo: "\ube44\uace0",
-  orderDate: "\ubc1c\uc8fc\uc77c\uc790",
+  orderDate: "\ubc1c\uc8fc\uc77c",
   orderNo: "\ubc1c\uc8fc\ubc88\ud638",
-  product: "\uc81c\ud488\uba85",
-  quantity: "\ubc1c\uc8fc\uc218\ub7c9",
+  product: "\ud488\uba85",
+  orderAmount: "\ubc1c\uc8fc\uae08\uc561",
+  quantity: "\uc218\ub7c9",
   status: "\uc0c1\ud0dc",
-  unitPrice: "\ub2e8\uac00",
+  totalAmount: "\ucd1d\uae08\uc561",
+  unitPrice: "\uae08\uc561",
   unknownLoadError:
     "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\u0020\uc870\ud68c\u0020\uc911\u0020\uc624\ub958\uac00\u0020\ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4\u002e",
 };
 
 const sortButtons: ListOption<SortKey>[] = [
-  { label: text.orderNo, key: "orderNo" },
   { label: text.orderDate, key: "orderDate" },
   { label: text.customer, key: "customer" },
+  { label: text.orderNo, key: "orderNo" },
   { label: text.product, key: "product" },
   { label: text.quantity, key: "quantity" },
-  { label: text.unitPrice, key: "unitPrice" },
+  { label: text.orderAmount, key: "totalAmount" },
   { label: text.dueDate, key: "dueDate" },
-  { label: text.status, key: "status" },
-  { label: text.createdAt, key: "createdAt" },
 ];
 
 const orderColumns: DataListColumn<Order>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
-  { align: "center", header: text.orderNo, key: "orderNo", render: (row) => row.orderNo },
   { align: "center", header: text.orderDate, key: "orderDate", render: (row) => row.orderDate },
   { align: "center", header: text.customer, key: "customer", render: (row) => row.customer },
+  { align: "center", header: text.orderNo, key: "orderNo", render: (row) => row.orderNo },
   { header: text.product, key: "product", render: (row) => row.product },
-  { header: text.quantity, key: "quantity", render: (row) => row.quantity },
-  { header: text.unitPrice, key: "unitPrice", render: (row) => row.unitPrice },
-  { header: text.dueDate, key: "dueDate", render: (row) => row.dueDate },
-  {
-    header: text.status,
-    key: "status",
-    render: (row) => (
-      <span className="rounded-full bg-[#eef4ff] px-3 py-1 font-bold text-slate-900">
-        {row.status}
-      </span>
-    ),
-  },
-  { header: text.memo, key: "memo", render: (row) => row.memo },
-  { align: "center", header: text.createdAt, key: "createdAt", render: (row) => row.createdAt ?? "-" },
+  { align: "center", header: text.quantity, key: "quantity", render: (row) => row.quantity },
+  { align: "center", header: text.orderAmount, key: "totalAmount", render: (row) => row.totalAmount ?? "-" },
+  { align: "center", header: text.dueDate, key: "dueDate", render: (row) => row.dueDate },
 ];
 
 export default function OrdersListPage() {
@@ -250,6 +236,35 @@ export default function OrdersListPage() {
     );
   };
 
+  const handleDeleteSelectedOrders = async () => {
+    const selectedOrders = orders.filter((order) => checkedOrderIds.includes(order.id));
+
+    if (selectedOrders.length === 0 || !window.confirm(`${selectedOrders.length}개를 정말로 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    const responses = await Promise.all(
+      selectedOrders.map((order) =>
+        fetch(`${orderListApiUrl}/${encodeURIComponent(order.orderNo)}`, {
+          method: "DELETE",
+        }),
+      ),
+    );
+
+    if (responses.some((response) => !response.ok)) {
+      window.alert("선택한 발주서 삭제에 실패했습니다.");
+      return;
+    }
+
+    setOrders((current) =>
+      current
+        .filter((order) => !checkedOrderIds.includes(order.id))
+        .map((order, index) => ({ ...order, id: index + 1 })),
+    );
+    setCheckedOrderIds([]);
+    clearOrderSidebarSelection();
+  };
+
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">
       <section className="flex min-w-0 flex-1 flex-col">
@@ -258,7 +273,7 @@ export default function OrdersListPage() {
             onSearchFieldChange={setSearchField}
             onSearchTextChange={setSearchText}
             onSort={handleSort}
-            onDelete={() => console.log("delete selected orders", checkedOrderIds)}
+            onDelete={handleDeleteSelectedOrders}
             options={sortButtons}
             searchField={searchField}
             searchOptions={searchOptions}
@@ -267,24 +282,17 @@ export default function OrdersListPage() {
             sortConditions={sortConditions}
           />
 
-          {isLoading ? (
-            <ListMessage>{text.loading}</ListMessage>
-          ) : errorMessage ? (
-            <ListMessage>{errorMessage}</ListMessage>
-          ) : sortedOrders.length === 0 ? (
-            <ListMessage>{text.empty}</ListMessage>
-          ) : (
-            <DataListTable
-              checkedRowIds={checkedOrderIds}
-              columns={orderColumns}
-              getRowId={(row) => row.id}
-              onBlankClick={closeOrderSidebar}
-              onCheckboxChange={handleToggleOrderCheckbox}
-              onRowClick={handleSelectOrder}
-              rows={sortedOrders}
-              selectedRowId={rightPanelMode === "detail" ? selectedOrder?.id : null}
-            />
-          )}
+          <DataListTable
+            checkedRowIds={checkedOrderIds}
+            columns={orderColumns}
+            emptyMessage={isLoading ? text.loading : errorMessage || text.empty}
+            getRowId={(row) => row.id}
+            onBlankClick={closeOrderSidebar}
+            onCheckboxChange={handleToggleOrderCheckbox}
+            onRowClick={handleSelectOrder}
+            rows={isLoading || errorMessage ? [] : sortedOrders}
+            selectedRowId={rightPanelMode === "detail" ? selectedOrder?.id : null}
+          />
         </div>
       </section>
     </main>
@@ -300,6 +308,7 @@ function toOrderRow(order: OrderPurchaseResponse, index: number): Order {
     product: order.productName ?? "-",
     quantity: formatNumber(order.quantity),
     unitPrice: formatNumber(order.price),
+    totalAmount: formatNumber(calculateTotalAmount(order.quantity, order.price)),
     dueDate: formatDate(order.dueDate),
     status: formatStatus(order.status),
     memo: order.note ?? "-",
@@ -308,11 +317,19 @@ function toOrderRow(order: OrderPurchaseResponse, index: number): Order {
 }
 
 function formatDate(value: string | null) {
-  return value ? value.replaceAll("-", ".") : "-";
+  return formatKoreanDateWithoutYear(value);
 }
 
 function formatDateTime(value: string | null) {
-  return value ? value.replace("T", " ").replaceAll("-", ".") : "-";
+  return formatKoreanDateTimeWithoutYear(value);
+}
+
+function calculateTotalAmount(quantity: number | null, unitPrice: number | null) {
+  if (quantity == null || unitPrice == null) {
+    return null;
+  }
+
+  return quantity * unitPrice;
 }
 
 function formatNumber(value: number | null) {
@@ -338,8 +355,12 @@ function formatStatus(value: string | null) {
 }
 
 function getSortValue(order: Order, key: SortKey) {
-  if (key === "quantity" || key === "unitPrice") {
-    return Number(order[key].replaceAll(",", ""));
+  if (key === "totalAmount") {
+    return Number((order.totalAmount ?? "0").replaceAll(",", ""));
+  }
+
+  if (key === "quantity") {
+    return Number(order.quantity.replaceAll(",", ""));
   }
 
   return order[key];
@@ -347,12 +368,4 @@ function getSortValue(order: Order, key: SortKey) {
 
 function getSearchValue(order: Order, key: SortKey) {
   return order[key];
-}
-
-function ListMessage({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center border-t border-slate-200 text-sm font-bold text-slate-500">
-      {children}
-    </div>
-  );
 }

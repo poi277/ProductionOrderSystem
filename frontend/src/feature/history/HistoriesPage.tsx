@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DataListTable from "../common/DataListTable";
+import { formatKoreanDateTimeWithoutYear } from "../common/dateFormat";
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
@@ -42,7 +43,7 @@ type SortKey = keyof Omit<HistoryRow, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
   { label: "이력번호", key: "historyId" },
-  { label: "생산지시번호", key: "productionOrderNo" },
+  { label: "발주(생산)번호", key: "productionOrderNo" },
   { label: "제품 QR", key: "productQr" },
   { label: "제품명", key: "productName" },
   { label: "상태", key: "status" },
@@ -53,7 +54,7 @@ const sortButtons: ListOption<SortKey>[] = [
 const historyColumns: DataListColumn<HistoryRow>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
   { align: "center", header: "이력번호", key: "historyId", render: (row) => row.historyId },
-  { align: "center", header: "생산지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
+  { align: "center", header: "발주(생산)번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "제품 QR", key: "productQr", render: (row) => row.productQr },
   { header: "제품명", key: "productName", render: (row) => row.productName },
   {
@@ -159,6 +160,36 @@ export default function HistoriesPage() {
     openOrderDetailSidebar(toSidebarOrder(row));
   };
 
+  const handleDeleteSelectedRows = async () => {
+    const selectedRows = histories.filter((row) => checkedRowIds.includes(row.id));
+
+    if (selectedRows.length === 0 || !window.confirm(`${selectedRows.length}개를 정말로 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    const responses = await Promise.all(
+      selectedRows.map((row) =>
+        fetch(`${orderApiBaseUrl}/histories/${encodeURIComponent(row.historyId)}`, {
+          method: "DELETE",
+        }),
+      ),
+    );
+
+    if (responses.some((response) => !response.ok)) {
+      window.alert("선택한 제품이력 삭제에 실패했습니다.");
+      return;
+    }
+
+    setHistories((current) =>
+      current
+        .filter((row) => !checkedRowIds.includes(row.id))
+        .map((row, index) => ({ ...row, id: index + 1 })),
+    );
+    setCheckedRowIds([]);
+    setSelectedRowId(null);
+    closeOrderSidebar();
+  };
+
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">
       <section className="flex min-w-0 flex-1 flex-col px-5 py-5">
@@ -166,7 +197,7 @@ export default function HistoriesPage() {
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={handleSort}
-          onDelete={() => console.log("delete selected histories", checkedRowIds)}
+          onDelete={handleDeleteSelectedRows}
           options={sortButtons}
           searchField={searchField}
           searchOptions={searchOptions}
@@ -262,5 +293,5 @@ function toHistoryStatusLabel(status: string | null) {
 }
 
 function formatDateTime(value: string | null) {
-  return value ? value.replace("T", " ").replaceAll("-", ".") : "-";
+  return formatKoreanDateTimeWithoutYear(value);
 }

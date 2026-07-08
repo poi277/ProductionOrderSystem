@@ -17,7 +17,7 @@ const processOptions = [
   { label: "조립", value: "ASSEMBLY" },
   { label: "기능검사", value: "FUNCTION_TEST" },
   { label: "출하검사", value: "SHIPMENT_INSPECTION" },
-  { label: "출하중", value: "SHIPMENT" },
+  { label: "출하완료", value: "SHIPMENT" },
 ];
 
 type OrderProcessFormCardProps = {

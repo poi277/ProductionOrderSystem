@@ -24,6 +24,11 @@ type ListToolbarProps<TKey extends string> = {
   onSearchFieldChange: (key: TKey) => void;
   onSearchTextChange: (value: string) => void;
   onSort: (key: TKey) => void;
+  extraAction?: {
+    disabled?: boolean;
+    label: string;
+    onClick: () => void;
+  };
   onDelete?: () => void;
   selectedCount?: number;
 };
@@ -37,6 +42,7 @@ export default function ListToolbar<TKey extends string>({
   onSearchFieldChange,
   onSearchTextChange,
   onSort,
+  extraAction,
   onDelete,
   selectedCount = 0,
 }: ListToolbarProps<TKey>) {
@@ -71,9 +77,9 @@ export default function ListToolbar<TKey extends string>({
         })}
       </div>
 
-      <div className="flex w-full max-w-[560px] items-start gap-2">
+      <div className="flex w-full items-start gap-2">
         <div
-          className="relative min-w-0 flex-1"
+          className="relative min-w-[360px] max-w-[560px] flex-1"
           onBlur={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget)) {
               setIsFieldDropdownOpen(false);
@@ -176,6 +182,16 @@ export default function ListToolbar<TKey extends string>({
           )}
         </div>
         {onDelete && <DeleteActionButton disabled={selectedCount === 0} onClick={onDelete} selectedCount={selectedCount} />}
+        {extraAction && (
+          <button
+            className="h-10 rounded-lg bg-teal-600 px-4 text-sm font-bold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={extraAction.disabled}
+            onClick={extraAction.onClick}
+            type="button"
+          >
+            {extraAction.label}
+          </button>
+        )}
       </div>
     </div>
   );

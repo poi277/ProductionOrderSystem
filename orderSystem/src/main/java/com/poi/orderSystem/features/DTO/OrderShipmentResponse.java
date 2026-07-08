@@ -13,6 +13,9 @@ public class OrderShipmentResponse {
 	private final String productQr;
 	private final String productName;
 	private final String productionId;
+	private final String customer;
+	private final Integer quantity;
+	private final String lot;
 	private final String productProcessNo;
 	private final String processName;
 	private final String shippedAt;
@@ -28,6 +31,9 @@ public class OrderShipmentResponse {
 		this.productQr = product.getProductQr();
 		this.productName = product.getProductName();
 		this.productionId = production == null ? null : production.getPurchaseId();
+		this.customer = production == null || production.getPurchase() == null ? null : production.getPurchase().getCustomer();
+		this.quantity = 1;
+		this.lot = product.getLot();
 		this.productProcessNo = product.getProductQr();
 		this.processName = process == null ? null : process.getProcessName();
 		this.shippedAt = null;

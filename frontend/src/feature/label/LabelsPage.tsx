@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DataListTable from "../common/DataListTable";
+import { formatKoreanDateTimeWithoutYear } from "../common/dateFormat";
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
@@ -51,7 +52,7 @@ const sortButtons: ListOption<SortKey>[] = [
   { label: "QR 데이터", key: "qrData" },
   { label: "제품명", key: "product" },
   { label: "LOT", key: "lot" },
-  { label: "생산지시번호", key: "productionOrderNo" },
+  { label: "발주(생산)번호", key: "productionOrderNo" },
   { label: "생성시간", key: "createdAt" },
 ];
 
@@ -59,7 +60,7 @@ const labelColumns: DataListColumn<LabelRow>[] = [
   { align: "center", header: "QR데이터", key: "qrData", render: (row) => row.qrData },
   { header: "제품명", key: "product", render: (row) => row.product },
   { align: "center", header: "LOT", key: "lot", render: (row) => row.lot },
-  { align: "center", header: "생산지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
+  { align: "center", header: "발주(생산)번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "생성시간", key: "createdAt", render: (row) => row.createdAt },
 ];
 
@@ -266,9 +267,5 @@ function toLabelRowFromApi(label: LabelResponse, index: number): LabelRow {
 }
 
 function toDisplayDateTime(value: string) {
-  if (!value) {
-    return "-";
-  }
-
-  return value.replace("T", " ").replaceAll("-", ".");
+  return formatKoreanDateTimeWithoutYear(value);
 }

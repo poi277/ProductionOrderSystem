@@ -11,7 +11,9 @@ public class OrderProductProcessResponse {
 
 	private final String productQr;
 	private final String productionId;
+	private final String customer;
 	private final String productName;
+	private final Integer quantity;
 	private final String lot;
 	private final ProductProcess process;
 	private final String processName;
@@ -25,7 +27,9 @@ public class OrderProductProcessResponse {
 
 		this.productQr = product.getProductQr();
 		this.productionId = production == null ? null : production.getPurchaseId();
+		this.customer = production == null || production.getPurchase() == null ? null : production.getPurchase().getCustomer();
 		this.productName = product.getProductName();
+		this.quantity = 1;
 		this.lot = product.getLot();
 		this.process = process;
 		this.processName = process == null ? null : process.getProcessName();

@@ -34,7 +34,6 @@ public class OrderProduction {
 
 	@JsonIgnore
 	@OneToMany(mappedBy = "production", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, orphanRemoval = true)
-
 	private List<OrderProduct> products;
 
 	private LocalDateTime createdTime;

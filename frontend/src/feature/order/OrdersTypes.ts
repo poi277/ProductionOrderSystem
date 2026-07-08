@@ -12,6 +12,7 @@ export type Order = {
   instructionQuantity?: string;
   completedQuantity?: string;
   shippedQuantity?: string;
+  totalAmount?: string;
   productQr?: string;
   qrData?: string;
   title?: string;

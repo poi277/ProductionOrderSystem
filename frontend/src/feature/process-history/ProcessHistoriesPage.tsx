@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DataListTable from "../common/DataListTable";
+import { formatKoreanDateTimeWithoutYear } from "../common/dateFormat";
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
@@ -39,7 +40,7 @@ const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://lo
 
 const sortButtons: ListOption<SortKey>[] = [
   { label: "공정이력번호", key: "processId" },
-  { label: "발주번호", key: "purchaseId" },
+  { label: "발주(생산)번호", key: "purchaseId" },
   { label: "제품 QR", key: "productQr" },
   { label: "제품명", key: "productName" },
   { label: "공정", key: "productProcess" },
@@ -50,7 +51,7 @@ const sortButtons: ListOption<SortKey>[] = [
 const processHistoryColumns: DataListColumn<ProcessHistoryRow>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
   { align: "center", header: "공정이력번호", key: "processId", render: (row) => row.processId },
-  { align: "center", header: "발주번호", key: "purchaseId", render: (row) => row.purchaseId },
+  { align: "center", header: "발주(생산)번호", key: "purchaseId", render: (row) => row.purchaseId },
   { align: "center", header: "제품 QR", key: "productQr", render: (row) => row.productQr },
   { header: "제품명", key: "productName", render: (row) => row.productName },
   { header: "공정", key: "productProcess", render: (row) => row.productProcess },
@@ -187,5 +188,5 @@ function toProductProcessLabel(process: string | null) {
 }
 
 function formatDateTime(value: string | null) {
-  return value ? value.replace("T", " ").replaceAll("-", ".") : "-";
+  return formatKoreanDateTimeWithoutYear(value);
 }

@@ -41,6 +41,23 @@ export default function DataListTable<TRow>({
     () => rows.slice((activePage - 1) * pageSize, activePage * pageSize),
     [activePage, rows],
   );
+  const pageRowIds = pageRows.map(getRowId);
+  const checkedIds = checkedRowIds ?? [];
+  const isAllPageRowsChecked = pageRowIds.length > 0 && pageRowIds.every((rowId) => checkedIds.includes(rowId));
+
+  const handleToggleAllPageRows = () => {
+    if (!onCheckboxChange) {
+      return;
+    }
+
+    pageRows.forEach((row) => {
+      const rowId = getRowId(row);
+
+      if (isAllPageRowsChecked || !checkedIds.includes(rowId)) {
+        onCheckboxChange(row);
+      }
+    });
+  };
 
   return (
     <section
@@ -58,7 +75,7 @@ export default function DataListTable<TRow>({
           <thead>
             <tr className="border-b border-slate-200 text-xs text-slate-500">
               <th className="w-10 px-3 py-3">
-                <ListCheckbox />
+                <ListCheckbox checked={isAllPageRowsChecked} onChange={handleToggleAllPageRows} />
               </th>
               {columns.map((column, columnIndex) => {
                 const align = column.align ?? (columnIndex < 3 ? "left" : "center");
@@ -90,6 +107,9 @@ export default function DataListTable<TRow>({
                   key={rowId}
                   onClick={(event) => {
                     event.stopPropagation();
+                    if (onCheckboxChange) {
+                      onCheckboxChange(row);
+                    }
                     onRowClick(row);
                   }}
                 >

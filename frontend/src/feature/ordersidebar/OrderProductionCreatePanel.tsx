@@ -39,6 +39,16 @@ const text = {
   title: "새 생산지시 입력",
 };
 
+async function getApiErrorMessage(response: Response, fallbackMessage: string) {
+  try {
+    const result = (await response.json()) as Partial<ApiResponse<unknown>>;
+
+    return result.message || fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
+}
+
 export default function OrderProductionCreatePanel({ onCancel, submitButtonClassName }: OrderProductionCreatePanelProps) {
   const initialForm = useMemo<OrderProductionForm>(
     () => ({
@@ -115,7 +125,7 @@ export default function OrderProductionCreatePanel({ onCancel, submitButtonClass
       });
 
       if (!response.ok) {
-        throw new Error(text.saveError);
+        throw new Error(await getApiErrorMessage(response, text.saveError));
       }
 
       await response.json();

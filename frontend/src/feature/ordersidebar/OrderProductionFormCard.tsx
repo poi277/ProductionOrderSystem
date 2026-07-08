@@ -28,7 +28,7 @@ type OrderProductionFormCardProps = {
 const text = {
   completedQuantity: "\uc644\ub8cc\uc218\ub7c9",
   customer: "\uace0\uac1d\uc0ac",
-  dueDate: "\ub0a9\uae30",
+  dueDate: "\ub0a9\uae30\uc77c",
   instructionQuantity: "\uc9c0\uc2dc\uc218\ub7c9",
   lotNo: "LOT",
   orderNo: "\ubc1c\uc8fc\ubc88\ud638",

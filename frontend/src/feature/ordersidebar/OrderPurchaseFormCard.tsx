@@ -26,10 +26,10 @@ type OrderPurchaseFormCardProps = {
 
 const text = {
   customer: "\uace0\uac1d\uc0ac",
-  dueDate: "\ub0a9\uae30",
+  dueDate: "\ub0a9\uae30\uc77c",
   memo: "\ube44\uace0",
   orderDate: "\ubc1c\uc8fc\uc77c\uc790",
-  product: "\ud488\uba85",
+  product: "\uc81c\ud488\uba85",
   purchaseId: "\ubc1c\uc8fc\ubc88\ud638",
   quantity: "\ubc1c\uc8fc\uc218\ub7c9",
   status: "\uc0c1\ud0dc",

@@ -1,5 +1,4 @@
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { getCategoryActiveClass } from "../common/categoryActiveStyles";
 import type { CategoryActiveKey } from "../common/categoryActiveStyles";
 import type { Order, RightPanelMode, SidebarFormType } from "../order/OrdersTypes";
@@ -52,8 +51,7 @@ export default function OrderRightPanel({
 }: OrderRightPanelProps) {
   const pathname = usePathname();
   const currentPageFormType = getCurrentPageFormType(pathname);
-  const [selectedFormType, setSelectedFormType] = useState<SidebarFormType>(sidebarFormType);
-  const activeFormType = mode === "create" ? sidebarFormType : selectedFormType;
+  const activeFormType = mode === "create" ? sidebarFormType : currentPageFormType;
   const visibleSelectedOrder =
     (selectedOrder?.detailType ?? "purchase") === currentPageFormType ? selectedOrder : null;
   const submitButtonClassName = getCategoryActiveClass(getFormActiveKey(sidebarFormType));
@@ -94,7 +92,6 @@ export default function OrderRightPanel({
                   mode === "create" ? "bg-white text-black" : "hover:text-slate-900"
                 }`}
                 onClick={() => {
-                  setSelectedFormType(currentPageFormType);
                   onSetMode("create", currentPageFormType);
                 }}
                 type="button"
@@ -104,16 +101,21 @@ export default function OrderRightPanel({
             </div>
             <div className="mt-2 grid grid-cols-5 gap-1 rounded-lg bg-[#eef1f8] p-1 text-[11px] font-bold text-slate-500">
               {formSwitchButtons.map((button) => {
-                const isActive = mode === "create" && activeFormType === button.formType;
+                const isActive = activeFormType === button.formType;
+                const isDisabled = mode !== "create";
 
                 return (
                   <button
                     className={`h-8 rounded-md transition-colors ${
-                      isActive ? getCategoryActiveClass(button.activeKey) : "hover:text-slate-900"
+                      isActive ? getCategoryActiveClass(button.activeKey) : isDisabled ? "" : "hover:text-slate-900"
                     }`}
+                    disabled={isDisabled}
                     key={button.formType}
                     onClick={() => {
-                      setSelectedFormType(button.formType);
+                      if (isDisabled) {
+                        return;
+                      }
+
                       onSetMode("create", button.formType);
                     }}
                     type="button"

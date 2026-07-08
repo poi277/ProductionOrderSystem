@@ -28,11 +28,11 @@ type Menu = {
 };
 
 const mainMenus: Menu[] = [
-  { activeKey: "dashboard", label: "대시보드", href: "/dashboard", icon: "dashboard" },
+  { activeKey: "dashboard", label: "전체현황", href: "/dashboard", icon: "dashboard" },
   { activeKey: "order", label: "발주서", href: "/orders", icon: "orders" },
   { activeKey: "production", label: "생산지시", href: "/production-orders", icon: "production" },
   { activeKey: "process", label: "생산현황", href: "/product-processes", icon: "process" },
-  { activeKey: "shipment", label: "납품출하", href: "/shipments", icon: "shipment" },
+  { activeKey: "shipment", label: "검수/포장", href: "/shipments", icon: "shipment" },
   { activeKey: "label", label: "라벨", href: "/labels", icon: "label" },
   { activeKey: "history", label: "공정이력", href: "/process-histories", icon: "history" },
   { activeKey: "history", label: "제품이력", href: "/histories", icon: "history" },

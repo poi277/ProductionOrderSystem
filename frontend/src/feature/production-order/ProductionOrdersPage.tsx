@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DataListTable from "../common/DataListTable";
+import { formatKoreanDateTimeWithoutYear, formatKoreanDateWithoutYear } from "../common/dateFormat";
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
@@ -14,9 +15,13 @@ type ProductionOrder = {
   orderNo: string;
   customer: string;
   product: string;
+  lotNo: string;
+  productQr: string;
   orderQuantity: string;
   instructionQuantity: string;
+  purchaseQuantity: string;
   processCounts: Record<string, number>;
+  processLabels: Record<string, string>;
   dueDate: string;
   createdTime: string;
 };
@@ -26,6 +31,8 @@ type ProductionOrderResponse = {
   customer: string | null;
   dueDate: string | null;
   productName: string | null;
+  lot: string | null;
+  productQr: string | null;
   purchaseQuantity: number | null;
   instructionQuantity: number | null;
   productQrQuantity: number | null;
@@ -33,6 +40,7 @@ type ProductionOrderResponse = {
   shippedQuantity: number | null;
   createdTime: string | null;
   processCounts: Record<string, number> | null;
+  processLabels: Record<string, string> | null;
 };
 
 type ApiResponse<T> = {
@@ -45,19 +53,21 @@ const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://lo
 
 type SortKey =
   | "orderNo"
+  | "createdTime"
   | "customer"
   | "product"
   | "instructionQuantity"
-  | "dueDate"
-  | "createdTime";
+  | "lotNo"
+  | "productQr";
 
 const sortButtons: ListOption<SortKey>[] = [
-  { label: "발주번호", key: "orderNo" },
+  { label: "날짜", key: "createdTime" },
   { label: "고객사", key: "customer" },
-  { label: "제품명", key: "product" },
+  { label: "지시번호", key: "orderNo" },
+  { label: "품명", key: "product" },
   { label: "수량", key: "instructionQuantity" },
-  { label: "납기", key: "dueDate" },
-  { label: "생성시간", key: "createdTime" },
+  { label: "LOT NO.", key: "lotNo" },
+  { label: "QR", key: "productQr" },
 ];
 
 const productProcessRows = [
@@ -65,7 +75,7 @@ const productProcessRows = [
   { key: "ASSEMBLY", label: "조립" },
   { key: "FUNCTION_TEST", label: "기능검사" },
   { key: "SHIPMENT_INSPECTION", label: "출하검사" },
-  { key: "SHIPMENT", label: "출하중" },
+  { key: "SHIPMENT", label: "출하완료" },
 ];
 
 const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
@@ -76,10 +86,10 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
     render: (row) => row.id,
   },
   {
-    header: "발주번호",
     align: "center",
-    key: "orderNo",
-    render: (row) => row.orderNo,
+    header: "날짜",
+    key: "createdTime",
+    render: (row) => row.createdTime,
   },
   {
     align: "center",
@@ -88,7 +98,13 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
     render: (row) => row.customer,
   },
   {
-    header: "제품명",
+    header: "지시번호",
+    align: "center",
+    key: "orderNo",
+    render: (row) => row.orderNo,
+  },
+  {
+    header: "품명",
     key: "product",
     render: (row) => row.product,
   },
@@ -96,26 +112,38 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
     cellClassName: "p-0 align-middle font-bold text-slate-900",
     header: "수량",
     key: "instructionQuantity",
-    render: (row) => <ProductionQuantityTable processCounts={row.processCounts} quantity={row.instructionQuantity} />,
-  },
-  {
-    header: "납기",
-    key: "dueDate",
-    render: (row) => row.dueDate,
+    render: (row) => (
+      <ProductionQuantityTable
+        processCounts={row.processCounts}
+        processLabels={row.processLabels}
+        purchaseQuantity={row.purchaseQuantity}
+        quantity={row.instructionQuantity}
+      />
+    ),
   },
   {
     align: "center",
-    header: "생성시간",
-    key: "createdTime",
-    render: (row) => row.createdTime,
+    header: "LOT NO.",
+    key: "lotNo",
+    render: (row) => row.lotNo,
+  },
+  {
+    align: "center",
+    header: "QR",
+    key: "productQr",
+    render: (row) => row.productQr,
   },
 ];
 
 function ProductionQuantityTable({
   processCounts,
+  processLabels,
+  purchaseQuantity,
   quantity,
 }: {
   processCounts: Record<string, number>;
+  processLabels: Record<string, string>;
+  purchaseQuantity: string;
   quantity: string;
 }) {
   return (
@@ -123,7 +151,15 @@ function ProductionQuantityTable({
       <tbody>
         <tr className="border-b border-slate-100">
           <th className="w-2/3 bg-slate-100 px-2 py-1 text-left font-bold text-slate-700">
-            총 수량
+            발주수량
+          </th>
+          <td className="w-1/3 px-2 py-1 text-right font-bold text-slate-950">
+            {purchaseQuantity}
+          </td>
+        </tr>
+        <tr className="border-b border-slate-300">
+          <th className="w-2/3 bg-slate-100 px-2 py-1 text-left font-bold text-slate-700">
+            생산 지시 수량
           </th>
           <td className="w-1/3 px-2 py-1 text-right font-bold text-slate-950">
             {quantity}
@@ -132,7 +168,7 @@ function ProductionQuantityTable({
         {productProcessRows.map((process) => (
           <tr className="border-b border-slate-100 last:border-b-0" key={process.key}>
             <th className="w-2/3 bg-slate-50 px-2 py-1 text-left font-bold text-slate-600">
-              {process.label}
+              {processLabels[process.key] ?? process.label}
             </th>
             <td className="w-1/3 px-2 py-1 text-right font-bold text-slate-950">
               {processCounts[process.key] ?? 0}
@@ -280,6 +316,36 @@ export default function ProductionOrdersPage() {
     openOrderDetailSidebar(toSidebarOrder(order));
   };
 
+  const handleDeleteSelectedOrders = async () => {
+    const selectedOrders = orders.filter((order) => checkedOrderIds.includes(order.id));
+
+    if (selectedOrders.length === 0 || !window.confirm(`${selectedOrders.length}개를 정말로 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    const responses = await Promise.all(
+      selectedOrders.map((order) =>
+        fetch(`${orderApiBaseUrl}/productions/${encodeURIComponent(order.orderNo)}`, {
+          method: "DELETE",
+        }),
+      ),
+    );
+
+    if (responses.some((response) => !response.ok)) {
+      window.alert("선택한 생산지시 삭제에 실패했습니다.");
+      return;
+    }
+
+    setOrders((current) =>
+      current
+        .filter((order) => !checkedOrderIds.includes(order.id))
+        .map((order, index) => ({ ...order, id: index + 1 })),
+    );
+    setCheckedOrderIds([]);
+    setSelectedOrderId(null);
+    closeOrderSidebar();
+  };
+
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">
       <section className="flex min-w-0 flex-1 flex-col px-5 py-5">
@@ -287,7 +353,7 @@ export default function ProductionOrdersPage() {
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={handleSort}
-          onDelete={() => console.log("delete selected production orders", checkedOrderIds)}
+          onDelete={handleDeleteSelectedOrders}
           options={sortButtons}
           searchField={searchField}
           searchOptions={searchOptions}
@@ -333,6 +399,8 @@ function toSidebarOrder(order: ProductionOrder): Order {
     productionOrderNo: order.orderNo,
     customer: order.customer,
     product: order.product,
+    lotNo: order.lotNo,
+    productQr: order.productQr,
     quantity: order.instructionQuantity,
     instructionQuantity: order.instructionQuantity,
     unitPrice: "-",
@@ -349,10 +417,14 @@ function toProductionOrderRow(order: OrderProductionForm, index: number): Produc
     orderNo: order.orderNo,
     customer: order.customer || "-",
     product: order.product || "-",
+    lotNo: "-",
+    productQr: "-",
     orderQuantity: order.instructionQuantity || "0",
     instructionQuantity: order.instructionQuantity || "0",
+    purchaseQuantity: order.instructionQuantity || "0",
     processCounts: createInitialProcessCounts(Number(order.instructionQuantity || 0)),
-    dueDate: order.dueDate ? order.dueDate.replaceAll("-", ".") : "-",
+    processLabels: createDefaultProcessLabels(),
+    dueDate: formatKoreanDateWithoutYear(order.dueDate),
     createdTime: "-",
   };
 }
@@ -365,10 +437,14 @@ function toProductionOrderRowFromApi(order: ProductionOrderResponse, index: numb
     orderNo: order.purchaseId ?? "-",
     customer: order.customer ?? "-",
     product: order.productName ?? "-",
+    lotNo: order.lot ?? "",
+    productQr: order.productQr ?? "",
     orderQuantity: String(order.purchaseQuantity ?? instructionQuantity),
     instructionQuantity,
+    purchaseQuantity: String(order.purchaseQuantity ?? 0),
     processCounts: normalizeProcessCounts(order.processCounts, Number(instructionQuantity)),
-    dueDate: order.dueDate ? order.dueDate.replaceAll("-", ".") : "-",
+    processLabels: normalizeProcessLabels(order.processLabels),
+    dueDate: formatKoreanDateWithoutYear(order.dueDate),
     createdTime: formatDateTime(order.createdTime),
   };
 }
@@ -377,6 +453,13 @@ function createInitialProcessCounts(instructionQuantity: number) {
   return productProcessRows.reduce<Record<string, number>>((counts, process, index) => {
     counts[process.key] = index === 0 ? instructionQuantity : 0;
     return counts;
+  }, {});
+}
+
+function createDefaultProcessLabels() {
+  return productProcessRows.reduce<Record<string, string>>((labels, process) => {
+    labels[process.key] = process.label;
+    return labels;
   }, {});
 }
 
@@ -391,6 +474,13 @@ function normalizeProcessCounts(processCounts: Record<string, number> | null, in
   }, {});
 }
 
+function normalizeProcessLabels(processLabels: Record<string, string> | null) {
+  return productProcessRows.reduce<Record<string, string>>((labels, process) => {
+    labels[process.key] = processLabels?.[process.key] ?? process.label;
+    return labels;
+  }, {});
+}
+
 function formatDateTime(value: string | null) {
-  return value ? value.replace("T", " ").replaceAll("-", ".") : "-";
+  return formatKoreanDateTimeWithoutYear(value);
 }
