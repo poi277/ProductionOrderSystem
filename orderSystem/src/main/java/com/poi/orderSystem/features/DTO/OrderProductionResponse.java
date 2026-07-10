@@ -5,7 +5,7 @@ import java.util.Map;
 
 import com.poi.orderSystem.features.entity.OrderProduction;
 import com.poi.orderSystem.features.entity.OrderPurchase;
-import com.poi.orderSystem.features.util.EnumUtil.ProductProcess;
+import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import lombok.Getter;
 
@@ -59,7 +59,7 @@ public class OrderProductionResponse {
 		this.instructionQuantity = productCount;
 		this.productQrQuantity = productCount;
 		this.completedQuantity = 0;
-		this.shippedQuantity = processCounts.getOrDefault(ProductProcess.SHIPMENT.name(), 0L).intValue();
+		this.shippedQuantity = processCounts.getOrDefault(ProcessStatus.SHIPPED.name(), 0L).intValue();
 		this.createdTime = production.getCreatedTime() == null ? null : production.getCreatedTime().toString();
 		this.processCounts = processCounts;
 		this.processLabels = processLabels();
@@ -76,7 +76,7 @@ public class OrderProductionResponse {
 	public static Map<String, Long> emptyProcessCounts() {
 		Map<String, Long> counts = new LinkedHashMap<>();
 
-		for (ProductProcess process : ProductProcess.values()) {
+		for (ProcessStatus process : ProcessStatus.values()) {
 			counts.put(process.name(), 0L);
 		}
 
@@ -86,8 +86,8 @@ public class OrderProductionResponse {
 	public static Map<String, String> processLabels() {
 		Map<String, String> labels = new LinkedHashMap<>();
 
-		for (ProductProcess process : ProductProcess.values()) {
-			labels.put(process.name(), process.getProcessName());
+		for (ProcessStatus process : ProcessStatus.values()) {
+			labels.put(process.name(), process.getLabel());
 		}
 
 		return labels;

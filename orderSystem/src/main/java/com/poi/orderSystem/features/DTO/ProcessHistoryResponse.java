@@ -1,7 +1,7 @@
 package com.poi.orderSystem.features.DTO;
 
 import com.poi.orderSystem.features.entity.ProcessHistory;
-import com.poi.orderSystem.features.util.EnumUtil.ProductProcess;
+import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import lombok.Getter;
 
@@ -12,7 +12,7 @@ public class ProcessHistoryResponse {
 	private final String purchaseId;
 	private final String productQr;
 	private final String productName;
-	private final ProductProcess productProcess;
+	private final ProcessStatus productProcess;
 	private final boolean isSuccess;
 	private final String createdTime;
 

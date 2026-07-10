@@ -60,6 +60,15 @@ public class OrderProductController {
 	public ResponseEntity<ApiResponse> completeShipments(@RequestBody java.util.List<String> productQrs) {
 		return ResponseEntity.ok().body(new ApiResponse(true, "shipments completed", orderProductService.completeShipments(productQrs)));
 	}
+	@PutMapping("/shipments/{productQr}")
+	public ResponseEntity<ApiResponse> putShipment(
+	        @PathVariable("productQr") String productQr,
+	        @RequestBody OrderProductProcessRequest request
+	) {
+	    return ResponseEntity.ok().body(
+	            new ApiResponse(true, "shipment updated", orderProductService.updateProductProcess(productQr, request))
+	    );
+	}
 
 	@GetMapping("/labels")
 	public ResponseEntity<ApiResponse> getLabels() {
@@ -70,4 +79,5 @@ public class OrderProductController {
 	public ResponseEntity<ApiResponse> getProcessHistories() {
 		return ResponseEntity.ok().body(new ApiResponse(true, "process histories loaded", orderProductService.findProcessHistories()));
 	}
+	
 }

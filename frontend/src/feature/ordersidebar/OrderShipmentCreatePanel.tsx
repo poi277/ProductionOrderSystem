@@ -56,7 +56,7 @@ export default function OrderShipmentCreatePanel({ onCancel, submitButtonClassNa
         productionOrderNo: "",
         productProcessNo: createProductProcessNo(),
         productQr: "",
-        processName: "",
+        processName: "FINAL_INSPECTION",
         isCompleted: "대기",
         shippedAt: "",
         memo: "",

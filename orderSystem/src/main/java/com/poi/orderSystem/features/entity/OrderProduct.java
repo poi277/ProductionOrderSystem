@@ -3,7 +3,7 @@ package com.poi.orderSystem.features.entity;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
-import com.poi.orderSystem.features.util.EnumUtil.ProductProcess;
+import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -34,7 +34,7 @@ public class OrderProduct {
 	private LocalDateTime createdTime;
 
 	@Enumerated(EnumType.STRING)
-	private ProductProcess process;
+	private ProcessStatus process;
 
 	@PrePersist
 	private void onCreate() {

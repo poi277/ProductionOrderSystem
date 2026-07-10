@@ -109,17 +109,10 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
     render: (row) => row.product,
   },
   {
-    cellClassName: "p-0 align-middle font-bold text-slate-900",
+    align: "center",
     header: "수량",
     key: "instructionQuantity",
-    render: (row) => (
-      <ProductionQuantityTable
-        processCounts={row.processCounts}
-        processLabels={row.processLabels}
-        purchaseQuantity={row.purchaseQuantity}
-        quantity={row.instructionQuantity}
-      />
-    ),
+    render: (row) => row.instructionQuantity,
   },
   {
     align: "center",
@@ -134,51 +127,6 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
     render: (row) => row.productQr,
   },
 ];
-
-function ProductionQuantityTable({
-  processCounts,
-  processLabels,
-  purchaseQuantity,
-  quantity,
-}: {
-  processCounts: Record<string, number>;
-  processLabels: Record<string, string>;
-  purchaseQuantity: string;
-  quantity: string;
-}) {
-  return (
-    <table className="w-full table-fixed border-collapse overflow-hidden rounded border border-slate-200 text-xs">
-      <tbody>
-        <tr className="border-b border-slate-100">
-          <th className="w-2/3 bg-slate-100 px-2 py-1 text-left font-bold text-slate-700">
-            발주수량
-          </th>
-          <td className="w-1/3 px-2 py-1 text-right font-bold text-slate-950">
-            {purchaseQuantity}
-          </td>
-        </tr>
-        <tr className="border-b border-slate-300">
-          <th className="w-2/3 bg-slate-100 px-2 py-1 text-left font-bold text-slate-700">
-            생산 지시 수량
-          </th>
-          <td className="w-1/3 px-2 py-1 text-right font-bold text-slate-950">
-            {quantity}
-          </td>
-        </tr>
-        {productProcessRows.map((process) => (
-          <tr className="border-b border-slate-100 last:border-b-0" key={process.key}>
-            <th className="w-2/3 bg-slate-50 px-2 py-1 text-left font-bold text-slate-600">
-              {processLabels[process.key] ?? process.label}
-            </th>
-            <td className="w-1/3 px-2 py-1 text-right font-bold text-slate-950">
-              {processCounts[process.key] ?? 0}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
 
 export default function ProductionOrdersPage() {
   const [orders, setOrders] = useState<ProductionOrder[]>([]);

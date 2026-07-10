@@ -13,11 +13,8 @@ export type OrderProcessForm = {
 };
 
 const processOptions = [
-  { label: "생산지시", value: "PRODUCTION_INSTRUCTION_CHECK" },
-  { label: "조립", value: "ASSEMBLY" },
-  { label: "기능검사", value: "FUNCTION_TEST" },
-  { label: "출하검사", value: "SHIPMENT_INSPECTION" },
-  { label: "출하완료", value: "SHIPMENT" },
+  { label: "생산", value: "ASSEMBLY" },
+  { label: "TEST", value: "TEST" },
 ];
 
 type OrderProcessFormCardProps = {
@@ -51,25 +48,6 @@ export default function OrderProcessFormCard({
       )}
 
       <div className="mt-3 flex flex-col gap-3">
-        <FormRow label={text.productQr}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productQr", value)}
-            required
-            value={form.productQr}
-          />
-        </FormRow>
-        <FormRow label={text.productName}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productName", value)}
-            required
-            value={form.productName}
-          />
-        </FormRow>
-        <FormRow label={text.lotNo}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("lotNo", value)} value={form.lotNo} />
-        </FormRow>
         <FormRow label={text.processSequence}>
           <div className="grid grid-cols-2 gap-2">
             {processOptions.map((option) => (

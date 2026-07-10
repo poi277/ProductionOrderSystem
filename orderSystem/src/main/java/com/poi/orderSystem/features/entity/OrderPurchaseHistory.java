@@ -8,8 +8,6 @@ import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -17,20 +15,26 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "processHistory")
+@Table(name = "orderPurchaseHistory")
 @Getter
 @Setter
-public class ProcessHistory {
+public class OrderPurchaseHistory {
+
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long processId;
 	private String purchaseId;
-	private String productQr;
+
+	private String customer;
+	private String productName;
+	private Integer quantity;
+	private Integer price;
+	private String purchaseDate;
+	private String dueDate;
+	private LocalDateTime createdTime;
 
 	@Enumerated(EnumType.STRING)
-	private ProcessStatus productProcess;
-	private boolean isSuccess;
-	private LocalDateTime createdTime;
+	private ProcessStatus status;
+
+	private String note;
 
 	@PrePersist
 	private void onCreate() {

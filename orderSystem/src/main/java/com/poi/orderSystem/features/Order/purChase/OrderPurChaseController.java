@@ -28,6 +28,12 @@ public class OrderPurChaseController {
 		return ResponseEntity.ok().body(new ApiResponse(true, "purchase orders loaded", orderPurChaseService.findPurchases()));
 	}
 
+	@GetMapping("/getDashBoard")
+	public ResponseEntity<ApiResponse> getdashBoardOrders() {
+		return ResponseEntity.ok()
+				.body(new ApiResponse(true, "purchase orders loaded", orderPurChaseService.findDashboardOrders()));
+	}
+
 	@PostMapping("/post")
 	public ResponseEntity<ApiResponse> postOrder(@Valid @RequestBody OrderPurchaseRequest request) {
 		return ResponseEntity.ok().body(new ApiResponse(true, "purchase order saved", orderPurChaseService.savePurchase(request)));

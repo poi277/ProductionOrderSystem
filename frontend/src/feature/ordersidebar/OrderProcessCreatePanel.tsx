@@ -42,7 +42,7 @@ export default function OrderProcessCreatePanel({ onCancel, submitButtonClassNam
       productName: "",
       lotNo: "",
       processName: "",
-      processSequence: "PRODUCTION_INSTRUCTION_CHECK",
+      processSequence: "ASSEMBLY",
       status: "대기",
       isShipmentTarget: "N",
       startedAt: "",
@@ -121,6 +121,6 @@ function toProductProcessRequest(form: OrderProcessForm) {
     productionId: form.productionOrderNo || null,
     productName: form.productName,
     lot: form.lotNo,
-    process: form.processSequence,
+    processName: form.processSequence,
   };
 }

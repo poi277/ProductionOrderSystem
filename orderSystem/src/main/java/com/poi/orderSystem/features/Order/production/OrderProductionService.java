@@ -18,7 +18,6 @@ import com.poi.orderSystem.features.repository.OrderProductionRepository;
 import com.poi.orderSystem.features.repository.OrderPurchaseRepository;
 import com.poi.orderSystem.features.util.EnumUtil.HistoryStatus;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
-import com.poi.orderSystem.features.util.EnumUtil.ProductProcess;
 
 import lombok.RequiredArgsConstructor;
 
@@ -104,7 +103,7 @@ public class OrderProductionService {
 			product.setProduction(production);
 			product.setProductName(productDisplayName);
 			product.setLot(request.getLot());
-			product.setProcess(ProductProcess.PRODUCTION_INSTRUCTION_CHECK);
+			product.setProcess(ProcessStatus.ASSEMBLY);
 
 			orderProductRepository.save(product);
 		}
@@ -153,7 +152,7 @@ public class OrderProductionService {
 
 		if (production.getProducts() != null) {
 			for (OrderProduct product : production.getProducts()) {
-				ProductProcess process = product.getProcess();
+				ProcessStatus process = product.getProcess();
 
 				if (process != null) {
 					processCounts.put(process.name(), processCounts.getOrDefault(process.name(), 0L) + 1);

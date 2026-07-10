@@ -32,6 +32,12 @@ const text = {
   updatedAt: "수정일시",
 };
 
+const shipmentProcessOptions = [
+  { label: "최종검수", value: "FINAL_INSPECTION" },
+  { label: "포장", value: "PACKAGING" },
+  { label: "납품대기", value: "WAITING_FOR_SHIPMENT" },
+];
+
 export default function OrderShipmentFormCard({
   disabled = false,
   form,
@@ -47,82 +53,26 @@ export default function OrderShipmentFormCard({
       )}
 
       <div className="mt-3 flex flex-col gap-3">
-        <FormRow label={text.productionOrderNo}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productionOrderNo", value)}
-            required
-            value={form.productionOrderNo}
-          />
-        </FormRow>
-        <FormRow label={text.productProcessNo}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productProcessNo", value)}
-            required
-            value={form.productProcessNo}
-          />
-        </FormRow>
-        <FormRow label={text.productQr}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productQr", value)}
-            required
-            value={form.productQr}
-          />
-        </FormRow>
         <FormRow label={text.processName}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("processName", value)}
-            required
-            value={form.processName}
-          />
-        </FormRow>
-        <FormRow label={text.isCompleted}>
-          <select
-            className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-            disabled={disabled}
-            onChange={(event) => onChange?.("isCompleted", event.target.value)}
-            value={form.isCompleted}
-          >
-            <option value="대기">대기</option>
-            <option value="부분출하">부분출하</option>
-            <option value="완료">완료</option>
-            <option value="취소">취소</option>
-          </select>
-        </FormRow>
-        <FormRow label={text.shippedAt}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("shippedAt", value)}
-            type="datetime-local"
-            value={form.shippedAt}
-          />
-        </FormRow>
-        <FormRow label={text.memo}>
-          <textarea
-            className="min-h-20 w-full resize-none rounded-md border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-            disabled={disabled}
-            onChange={(event) => onChange?.("memo", event.target.value)}
-            value={form.memo}
-          />
-        </FormRow>
-        <FormRow label={text.createdAt}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("createdAt", value)}
-            type="datetime-local"
-            value={form.createdAt}
-          />
-        </FormRow>
-        <FormRow label={text.updatedAt}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("updatedAt", value)}
-            type="datetime-local"
-            value={form.updatedAt}
-          />
+          <div className="grid grid-cols-3 gap-2">
+            {shipmentProcessOptions.map((option) => (
+              <label
+                className={`flex min-h-9 items-center gap-2 rounded-md border px-2.5 text-xs font-bold ${form.processName === option.value
+                    ? "border-sky-400 bg-sky-50 text-sky-800"
+                    : "border-slate-200 bg-white text-slate-900"
+                  } ${disabled ? "opacity-80" : ""}`}
+                key={option.value}
+              >
+                <input
+                  checked={form.processName === option.value}
+                  disabled={disabled}
+                  onChange={() => onChange?.("processName", option.value)}
+                  type="checkbox"
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
         </FormRow>
       </div>
     </section>

@@ -173,7 +173,7 @@ function toProductProcessRequest(form: OrderProcessForm) {
     productionId: form.productionOrderNo || null,
     productName: form.productName,
     lot: form.lotNo,
-    process: form.processSequence,
+    processName: form.processSequence,
   };
 }
 

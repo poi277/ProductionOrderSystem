@@ -2,7 +2,7 @@ package com.poi.orderSystem.features.DTO;
 
 import com.poi.orderSystem.features.entity.OrderProduct;
 import com.poi.orderSystem.features.entity.OrderProduction;
-import com.poi.orderSystem.features.util.EnumUtil.ProductProcess;
+import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import lombok.Getter;
 
@@ -25,7 +25,7 @@ public class OrderShipmentResponse {
 
 	private OrderShipmentResponse(OrderProduct product) {
 		OrderProduction production = product.getProduction();
-		ProductProcess process = product.getProcess();
+		ProcessStatus process = product.getProcess();
 
 		this.shipmentId = product.getProductQr();
 		this.productQr = product.getProductQr();
@@ -35,7 +35,7 @@ public class OrderShipmentResponse {
 		this.quantity = 1;
 		this.lot = product.getLot();
 		this.productProcessNo = product.getProductQr();
-		this.processName = process == null ? null : process.getProcessName();
+		this.processName = process == null ? null : process.getLabel();
 		this.shippedAt = null;
 		this.memo = product.getLot();
 		this.createdAt = product.getCreatedTime() == null ? null : product.getCreatedTime().toString();

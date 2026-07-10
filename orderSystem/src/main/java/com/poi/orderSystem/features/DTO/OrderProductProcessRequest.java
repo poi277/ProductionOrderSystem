@@ -1,6 +1,6 @@
 package com.poi.orderSystem.features.DTO;
 
-import com.poi.orderSystem.features.util.EnumUtil.ProductProcess;
+import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -13,5 +13,5 @@ public class OrderProductProcessRequest {
 	private String productionId;
 	private String productName;
 	private String lot;
-	private ProductProcess process;
+	private ProcessStatus processName;
 }

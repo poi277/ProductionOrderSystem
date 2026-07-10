@@ -198,7 +198,7 @@ export default function ShipmentsPage() {
   const handleCompleteSelectedRows = async () => {
     const selectedRows = shipments.filter((row) => checkedRowIds.includes(row.id));
 
-    if (selectedRows.length === 0 || !window.confirm(`${selectedRows.length}개를 검수/포장 처리하시겠습니까?`)) {
+    if (selectedRows.length === 0 || !window.confirm(`${selectedRows.length}개를 출하 처리하시겠습니까?`)) {
       return;
     }
 
@@ -211,7 +211,7 @@ export default function ShipmentsPage() {
     });
 
     if (!response.ok) {
-      window.alert("선택한 검수/포장 처리에 실패했습니다.");
+      window.alert("선택한 출하 처리에 실패했습니다.");
       return;
     }
 
@@ -231,7 +231,7 @@ export default function ShipmentsPage() {
         <ListToolbar
           extraAction={{
             disabled: checkedRowIds.length === 0,
-            label: "검수/포장",
+            label: "출하",
             onClick: handleCompleteSelectedRows,
           }}
           onDelete={handleDeleteSelectedRows}
