@@ -9,9 +9,6 @@ import lombok.Setter;
 @Setter
 public class OrderProductProcessRequest {
 
-	private String productQr;
-	private String productionId;
-	private String productName;
-	private String lot;
 	private ProcessStatus processName;
+	private Boolean isDefect;
 }

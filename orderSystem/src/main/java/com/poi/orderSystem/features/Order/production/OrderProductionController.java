@@ -29,22 +29,28 @@ public class OrderProductionController {
 		return ResponseEntity.ok().body(new ApiResponse(true, "production orders loaded", orderProductionService.findProductions()));
 	}
 
+	@GetMapping("/product-processes")
+	public ResponseEntity<ApiResponse> getProductProcesses() {
+		return ResponseEntity.ok()
+				.body(new ApiResponse(true, "product processes loaded", orderProductionService.findProductProcesses()));
+	}
+
 	@PostMapping
 	public ResponseEntity<ApiResponse> postProduction(@Valid @RequestBody OrderProductionRequest request) {
 		return ResponseEntity.ok().body(new ApiResponse(true, "production order saved", orderProductionService.saveProduction(request)));
 	}
 
-	@PutMapping("/{purchaseId}")
+	@PutMapping("/{id}")
 	public ResponseEntity<ApiResponse> putProduction(
-			@PathVariable("purchaseId") String purchaseId,
+			@PathVariable("id") Long id,
 			@Valid @RequestBody OrderProductionRequest request
 	) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "production order updated", orderProductionService.updateProduction(purchaseId, request)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "production order updated", orderProductionService.updateProduction(id, request)));
 	}
 
-	@DeleteMapping("/{purchaseId}")
-	public ResponseEntity<ApiResponse> deleteProduction(@PathVariable("purchaseId") String purchaseId) {
-		orderProductionService.deleteProduction(purchaseId);
+	@DeleteMapping("/{id}")
+	public ResponseEntity<ApiResponse> deleteProduction(@PathVariable("id") Long id) {
+		orderProductionService.deleteProduction(id);
 		return ResponseEntity.ok().body(new ApiResponse(true, "production order deleted"));
 	}
 

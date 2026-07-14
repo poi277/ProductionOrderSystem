@@ -23,7 +23,6 @@ type OrderPurchaseResponse = {
   productName: string | null;
   quantity: number | null;
   price: number | null;
-  purchaseDate: string | null;
   dueDate: string | null;
   status: string | null;
   note: string | null;
@@ -38,26 +37,15 @@ const text = {
     "\ubc1c\uc8fc\uc11c\uac00\u0020\ubc31\uc5d4\ub4dc\uc5d0\u0020\uc800\uc7a5\ub418\uc5c8\uc2b5\ub2c8\ub2e4\u002e",
   saveUnknownError:
     "\ubc1c\uc8fc\uc11c\u0020\uc800\uc7a5\u0020\uc911\u0020\uc624\ub958\uac00\u0020\ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4\u002e",
-  submit: "\uc81c\ucd9c\ud558\uae30",
+  submit: "\uc785\ub825\ud558\uae30",
   submitting: "\uc81c\ucd9c\u0020\uc911",
   title: "\uc0c8\u0020\ubc1c\uc8fc\uc11c\u0020\uc785\ub825",
 };
-
-function getTodayDate() {
-  const now = new Date();
-
-  return [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-");
-}
 
 export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassName }: OrderCreatePanelProps) {
   const initialForm = useMemo(
     () => ({
       purchaseId: "",
-      orderDate: getTodayDate(),
       customer: "",
       product: "",
       quantity: "",
@@ -92,7 +80,6 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
           productName: form.product,
           quantity: Number(form.quantity),
           unitPrice: form.unitPrice ? Number(form.unitPrice) : null,
-          purchaseDate: form.orderDate,
           dueDate: form.dueDate,
           note: form.memo,
         }),
@@ -116,25 +103,25 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
   };
 
   return (
-    <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleSubmit}>
+    <form className="mx-3 mt-2 flex flex-col gap-1.5" onSubmit={handleSubmit}>
       <OrderPurchaseFormCard
+        compact
         eyebrow=""
         form={form}
         onChange={updateForm}
-        showOrderDate
         title=""
       />
 
       <div className="flex gap-2">
         <button
-          className={`h-8 flex-1 rounded-md ${submitButtonClassName} text-xs font-bold disabled:bg-slate-300`}
+          className={`h-7 flex-1 rounded-md ${submitButtonClassName} text-xs font-bold disabled:bg-slate-300`}
           disabled={submitStatus === "saving"}
           type="submit"
         >
           {submitStatus === "saving" ? text.submitting : text.submit}
         </button>
         <button
-          className="h-8 flex-1 rounded-md border border-slate-200 bg-white text-xs font-bold text-slate-500"
+          className="h-7 flex-1 rounded-md border border-slate-200 bg-white text-xs font-bold text-slate-500"
           onClick={onCancel}
           type="button"
         >

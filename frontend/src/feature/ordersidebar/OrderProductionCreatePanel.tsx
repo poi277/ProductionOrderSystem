@@ -27,6 +27,11 @@ type OrderProductionResponse = {
   status: string | null;
 };
 
+type ProductionOrderSelection = {
+  orderNo: string;
+  productionQuantity: string;
+};
+
 const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
 const text = {
@@ -34,7 +39,7 @@ const text = {
   saveError: "생산지시 저장에 실패했습니다.",
   saveSuccess: "생산지시가 생성되었습니다.",
   saveUnknownError: "생산지시 저장 중 오류가 발생했습니다.",
-  submit: "제출하기",
+  submit: "입력하기",
   submitting: "제출 중",
   title: "새 생산지시 입력",
 };
@@ -92,6 +97,20 @@ export default function OrderProductionCreatePanel({ onCancel, submitButtonClass
     };
 
     void loadProductionOrderNumbers();
+  }, []);
+
+  useEffect(() => {
+    const handleOrderSelection = (event: Event) => {
+      const selection = (event as CustomEvent<ProductionOrderSelection>).detail;
+      setForm((current) => ({
+        ...current,
+        orderNo: selection.orderNo,
+        instructionQuantity: selection.productionQuantity,
+      }));
+    };
+
+    window.addEventListener("production-order-selected-for-create", handleOrderSelection);
+    return () => window.removeEventListener("production-order-selected-for-create", handleOrderSelection);
   }, []);
 
   const updateForm = (key: keyof OrderProductionForm, value: string) => {

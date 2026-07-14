@@ -21,7 +21,6 @@ public class OrderPurchaseRequest {
 	private Integer quantity;
 
 	private Integer unitPrice;
-	private String purchaseDate;
 	private String dueDate;
 	private ProcessStatus status;
 	private String note;

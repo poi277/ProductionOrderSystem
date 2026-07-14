@@ -21,11 +21,6 @@ public class OrderProductController {
 
 	private final OrderProductService orderProductService;
 
-	@GetMapping("/product-processes")
-	public ResponseEntity<ApiResponse> getProductProcesses() {
-		return ResponseEntity.ok().body(new ApiResponse(true, "product processes loaded", orderProductService.findProductProcesses()));
-	}
-
 	@DeleteMapping("/product-processes/{productQr}")
 	public ResponseEntity<ApiResponse> cancelProductProcess(@PathVariable("productQr") String productQr) {
 		orderProductService.cancelProduct(productQr);
@@ -38,6 +33,15 @@ public class OrderProductController {
 			@RequestBody OrderProductProcessRequest request
 	) {
 		return ResponseEntity.ok().body(new ApiResponse(true, "product process updated", orderProductService.updateProductProcess(productQr, request)));
+	}
+
+	@PutMapping("/product-processes/by-production/{purchaseId}")
+	public ResponseEntity<ApiResponse> putProductProcessesByProduction(
+			@PathVariable("purchaseId") String purchaseId,
+			@RequestBody OrderProductProcessRequest request
+	) {
+		return ResponseEntity.ok().body(new ApiResponse(true, "production product processes updated",
+				orderProductService.updateProductProcessesByProduction(purchaseId, request)));
 	}
 
 	@GetMapping("/shipments")
@@ -77,7 +81,12 @@ public class OrderProductController {
 
 	@GetMapping("/process-histories")
 	public ResponseEntity<ApiResponse> getProcessHistories() {
-		return ResponseEntity.ok().body(new ApiResponse(true, "process histories loaded", orderProductService.findProcessHistories()));
+		return ResponseEntity.ok().body(new ApiResponse(true, "products loaded", orderProductService.findProducts()));
+	}
+
+	@GetMapping("/products/{productQr}")
+	public ResponseEntity<ApiResponse> getProduct(@PathVariable("productQr") String productQr) {
+		return ResponseEntity.ok().body(new ApiResponse(true, "product loaded", orderProductService.findProduct(productQr)));
 	}
 	
 }

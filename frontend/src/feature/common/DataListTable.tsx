@@ -13,18 +13,20 @@ export type DataListColumn<TRow> = {
 type DataListTableProps<TRow> = {
   columns: DataListColumn<TRow>[];
   rows: TRow[];
+  checkboxHeader?: string;
   emptyMessage?: string;
   selectedRowId?: string | number | null;
   checkedRowIds?: Array<string | number>;
   getRowId: (row: TRow) => string | number;
   onBlankClick?: () => void;
   onCheckboxChange?: (row: TRow) => void;
-  onRowClick: (row: TRow) => void;
+  onRowClick?: (row: TRow) => void;
 };
 
 export default function DataListTable<TRow>({
   columns,
   rows,
+  checkboxHeader,
   emptyMessage,
   selectedRowId,
   checkedRowIds,
@@ -67,15 +69,18 @@ export default function DataListTable<TRow>({
       <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden">
         <table className="w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
-            <col style={{ width: "40px" }} />
+            <col style={{ width: checkboxHeader ? "64px" : "40px" }} />
             {columns.map((column) => (
               <col key={column.key} />
             ))}
           </colgroup>
           <thead>
             <tr className="border-b border-slate-200 text-xs text-slate-500">
-              <th className="w-10 px-3 py-3">
-                <ListCheckbox checked={isAllPageRowsChecked} onChange={handleToggleAllPageRows} />
+              <th className="px-3 py-3 text-center font-bold text-slate-900">
+                <div className="flex flex-col items-center justify-center gap-1">
+                  {checkboxHeader && <span>{checkboxHeader}</span>}
+                  <ListCheckbox checked={isAllPageRowsChecked} onChange={handleToggleAllPageRows} />
+                </div>
               </th>
               {columns.map((column, columnIndex) => {
                 const align = column.align ?? (columnIndex < 3 ? "left" : "center");
@@ -110,21 +115,23 @@ export default function DataListTable<TRow>({
                     if (onCheckboxChange) {
                       onCheckboxChange(row);
                     }
-                    onRowClick(row);
+                    onRowClick?.(row);
                   }}
                 >
-                  <td className="px-3 py-3">
-                    <ListCheckbox
-                      checked={isChecked}
-                      onChange={() => {
-                        if (onCheckboxChange) {
-                          onCheckboxChange(row);
-                          return;
-                        }
+                  <td className="px-3 py-3 text-center">
+                    <span className="inline-flex">
+                      <ListCheckbox
+                        checked={isChecked}
+                        onChange={() => {
+                          if (onCheckboxChange) {
+                            onCheckboxChange(row);
+                            return;
+                          }
 
-                        onRowClick(row);
-                      }}
-                    />
+                          onRowClick?.(row);
+                        }}
+                      />
+                    </span>
                   </td>
                   {columns.map((column, columnIndex) => {
                     const align = column.align ?? (columnIndex < 3 ? "left" : "center");

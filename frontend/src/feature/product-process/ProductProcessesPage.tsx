@@ -12,26 +12,45 @@ import type { OrderProcessForm } from "../ordersidebar/OrderProcessFormCard";
 
 type ProductProcess = {
   id: number;
+  purchaseDbId?: number;
+  productionDbId?: number;
   createdTime: string;
   customer: string;
   productionOrderNo: string;
   productName: string;
   quantity: string;
+  qrQuantity: string;
   lotNo: string;
   productQr: string;
   processSequence: string;
+  processStatus: string | null;
+  isDefect: boolean;
+  purchasePrice: number | null;
+  purchaseStatus: string | null;
+  purchaseNote: string | null;
+  purchaseCreatedTime: string | null;
+  dueDate: string | null;
 };
 
 type ProductProcessResponse = {
+  purchaseDbId: number | null;
+  productionDbId: number | null;
   productQr: string;
   productionId: string | null;
   customer: string | null;
   productName: string | null;
   quantity: number | null;
+  productQrQuantity: number | null;
   lot: string | null;
   process: string | null;
   processName: string | null;
   processSequence: string | null;
+  isDefect: boolean | null;
+  price: number | null;
+  purchaseStatus: string | null;
+  note: string | null;
+  purchaseCreatedTime: string | null;
+  dueDate: string | null;
   startedAt: string | null;
   createdTime: string | null;
 };
@@ -45,34 +64,31 @@ type ApiResponse<T> = {
 const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
 const productProcessLabels: Record<string, string> = {
-  PRODUCTION_INSTRUCTION_CHECK: "생산지시",
-  ASSEMBLY: "조립",
-  FUNCTION_TEST: "기능검사",
-  SHIPMENT_INSPECTION: "출하검사",
-  SHIPMENT: "출하완료",
+  INSTRUCTION: "생산지시",
+  ASSEMBLY: "생산중",
+  TEST: "기능검사",
+  FINAL_INSPECTION: "출하검사",
+  PACKAGING: "포장",
+  WAITING_FOR_SHIPMENT: "납품대기",
 };
 
 type SortKey = keyof Omit<ProductProcess, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
-  { label: "날짜", key: "createdTime" },
+  { label: "발주번호", key: "productionOrderNo" },
   { label: "고객사", key: "customer" },
-  { label: "지시번호", key: "productionOrderNo" },
   { label: "품명", key: "productName" },
-  { label: "수량", key: "quantity" },
-  { label: "LOT", key: "lotNo" },
-  { label: "QR", key: "productQr" },
+  { label: "발주수량", key: "quantity" },
+  { label: "현재공정", key: "processSequence" },
 ];
 
 const processColumns: DataListColumn<ProductProcess>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
-  { align: "center", header: "날짜", key: "createdTime", render: (row) => row.createdTime },
+  { align: "center", header: "발주번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "고객사", key: "customer", render: (row) => row.customer },
-  { align: "center", header: "지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { header: "품명", key: "productName", render: (row) => row.productName },
-  { align: "center", header: "수량", key: "quantity", render: (row) => row.quantity },
-  { align: "center", header: "LOT", key: "lotNo", render: (row) => row.lotNo },
-  { align: "center", header: "QR", key: "productQr", render: (row) => row.productQr },
+  { align: "center", header: "발주수량", key: "quantity", render: (row) => row.quantity },
+  { align: "center", header: "현재공정", key: "processSequence", render: (row) => row.processSequence },
 ];
 
 export default function ProductProcessesPage() {
@@ -88,7 +104,7 @@ export default function ProductProcessesPage() {
   useEffect(() => {
     const loadProcesses = async () => {
       try {
-        const response = await fetch(`${orderApiBaseUrl}/product-processes`);
+        const response = await fetch(`${orderApiBaseUrl}/productions/product-processes`);
 
         if (!response.ok) {
           setLoadError("생산현황 목록을 불러오지 못했습니다.");
@@ -124,7 +140,14 @@ export default function ProductProcessesPage() {
 
       setProcesses((current) =>
         current.map((row) =>
-          row.id === processId ? { ...toProductProcessRow(updatedProcess, row.id - 1), id: row.id } : row,
+          row.id === processId
+            ? {
+                ...row,
+                productName: updatedProcess.productName || row.productName,
+                lotNo: updatedProcess.lotNo || row.lotNo,
+                processSequence: toProductProcessLabel(updatedProcess.processSequence),
+              }
+            : row,
         ),
       );
     };
@@ -201,6 +224,7 @@ export default function ProductProcessesPage() {
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">
       <section className="flex min-w-0 flex-1 flex-col px-5 py-5">
         <ListToolbar
+          categoryKey="processOverview"
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={(key) => setSortConditions((current) => updateSortConditions(current, key))}
@@ -250,6 +274,8 @@ function updateSortConditions(current: SortCondition<SortKey>[], key: SortKey) {
 function toSidebarOrder(row: ProductProcess): Order {
   return {
     id: row.id,
+    purchaseDbId: row.purchaseDbId,
+    productionDbId: row.productionDbId,
     detailType: "process",
     orderNo: row.productionOrderNo,
     orderDate: row.createdTime,
@@ -258,12 +284,21 @@ function toSidebarOrder(row: ProductProcess): Order {
     lotNo: row.lotNo,
     processName: row.processSequence,
     processSequence: row.processSequence,
+    productProcessStatus: row.processStatus ?? undefined,
+    isDefect: row.isDefect,
+    purchasePrice: row.purchasePrice,
+    purchaseStatus: row.purchaseStatus,
+    purchaseNote: row.purchaseNote,
+    purchaseCreatedTime: row.purchaseCreatedTime,
+    purchaseDueDate: row.dueDate,
+    productQrQuantity: Number(row.qrQuantity) || 0,
     startedAt: "-",
     customer: row.customer,
     product: row.productName,
     quantity: row.quantity,
+    instructionQuantity: row.qrQuantity,
     unitPrice: "-",
-    dueDate: "-",
+    dueDate: row.dueDate ?? "-",
     status: "-",
     memo: `QR ${row.productQr}, LOT ${row.lotNo}, process ${row.processSequence}`,
   };
@@ -277,23 +312,41 @@ function toProductProcessRow(process: OrderProcessForm, index: number): ProductP
     productionOrderNo: process.productionOrderNo,
     productName: process.productName || "-",
     quantity: "1",
+    qrQuantity: "1",
     lotNo: process.lotNo || "-",
     productQr: process.productQr,
     processSequence: toProductProcessLabel(process.processSequence),
+    processStatus: process.processSequence,
+    isDefect: false,
+    purchasePrice: null,
+    purchaseStatus: null,
+    purchaseNote: null,
+    purchaseCreatedTime: null,
+    dueDate: null,
   };
 }
 
 function toProductProcessRowFromApi(process: ProductProcessResponse, index: number): ProductProcess {
   return {
     id: index + 1,
+    purchaseDbId: process.purchaseDbId ?? undefined,
+    productionDbId: process.productionDbId ?? undefined,
     createdTime: formatKoreanDateTimeWithoutYear(process.createdTime),
     customer: process.customer ?? "-",
     productionOrderNo: process.productionId ?? "-",
     productName: process.productName ?? "-",
     quantity: String(process.quantity ?? 1),
+    qrQuantity: String(process.productQrQuantity ?? 0),
     lotNo: process.lot ?? "-",
     productQr: process.productQr,
     processSequence: process.processName ?? process.processSequence ?? toProductProcessLabel(process.process),
+    processStatus: process.process,
+    isDefect: Boolean(process.isDefect),
+    purchasePrice: process.price,
+    purchaseStatus: process.purchaseStatus,
+    purchaseNote: process.note,
+    purchaseCreatedTime: process.purchaseCreatedTime,
+    dueDate: process.dueDate,
   };
 }
 

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 export type OrderPurchaseForm = {
   purchaseId: string;
-  orderDate?: string;
   customer: string;
   product: string;
   quantity: string;
@@ -13,13 +12,13 @@ export type OrderPurchaseForm = {
 };
 
 type OrderPurchaseFormCardProps = {
+  compact?: boolean;
   disabled?: boolean;
   disablePurchaseId?: boolean;
   eyebrow: string;
   form: OrderPurchaseForm;
   hideMemo?: boolean;
   onChange: (key: keyof OrderPurchaseForm, value: string) => void;
-  showOrderDate?: boolean;
   showStatus?: boolean;
   title: string;
 };
@@ -28,7 +27,6 @@ const text = {
   customer: "\uace0\uac1d\uc0ac",
   dueDate: "\ub0a9\uae30\uc77c",
   memo: "\ube44\uace0",
-  orderDate: "\ubc1c\uc8fc\uc77c\uc790",
   product: "\uc81c\ud488\uba85",
   purchaseId: "\ubc1c\uc8fc\ubc88\ud638",
   quantity: "\ubc1c\uc8fc\uc218\ub7c9",
@@ -42,13 +40,13 @@ const text = {
 };
 
 export default function OrderPurchaseFormCard({
+  compact = false,
   disabled = false,
   disablePurchaseId = false,
   eyebrow,
   form,
   hideMemo = false,
   onChange,
-  showOrderDate = false,
   showStatus = false,
   title,
 }: OrderPurchaseFormCardProps) {
@@ -60,7 +58,7 @@ export default function OrderPurchaseFormCard({
   };
 
   return (
-    <section className="h-[560px] overflow-y-auto rounded-lg border border-slate-100 bg-white px-3 py-4">
+    <section className={`rounded-lg border border-slate-100 bg-white px-3 ${compact ? "h-auto overflow-visible py-2 [&_input]:h-7 [&_select]:h-7 [&_textarea]:min-h-12" : "h-[560px] overflow-y-auto py-4"}`}>
       {(eyebrow || title) && (
         <header className="border-b border-slate-100 pb-2">
           {eyebrow && <p className="text-[11px] font-bold text-[#1f4f9a]">{eyebrow}</p>}
@@ -68,7 +66,7 @@ export default function OrderPurchaseFormCard({
         </header>
       )}
 
-      <div className="mt-3 flex flex-col gap-3">
+      <div className={`flex flex-col ${compact ? "mt-1.5 gap-1.5" : "mt-3 gap-3"}`}>
         <FormRow label={text.purchaseId}>
           <TextInput
             disabled={disabled || disablePurchaseId}
@@ -119,16 +117,6 @@ export default function OrderPurchaseFormCard({
               disabled={disabled}
               onChange={(event) => onChange("memo", event.target.value)}
               value={form.memo}
-            />
-          </FormRow>
-        )}
-        {showOrderDate && (
-          <FormRow label={text.orderDate}>
-            <TextInput
-              disabled={disabled}
-              onChange={(value) => onChange("orderDate", value)}
-              type="date"
-              value={form.orderDate ?? "-"}
             />
           </FormRow>
         )}

@@ -1,5 +1,13 @@
 export type Order = {
   id: number;
+  purchaseDbId?: number;
+  productionDbId?: number;
+  purchasePrice?: number | null;
+  purchaseStatus?: string | null;
+  purchaseNote?: string | null;
+  purchaseCreatedTime?: string | null;
+  purchaseDueDate?: string | null;
+  productQrQuantity?: number | null;
   detailType?: "purchase" | "production" | "process" | "shipment" | "label" | "history";
   orderNo: string;
   orderDate: string;
@@ -22,6 +30,9 @@ export type Order = {
   lotNo?: string;
   processName?: string;
   processSequence?: string;
+  productProcessStatus?: string;
+  isDefect?: boolean;
+  processUpdateScope?: "product" | "production";
   isShipmentTarget?: string;
   startedAt?: string;
   productProcessNo?: string;
@@ -42,3 +53,16 @@ export type Order = {
 export type RightPanelMode = "detail" | "create";
 
 export type SidebarFormType = "purchase" | "production" | "process" | "shipment" | "label" | "history";
+
+export type PurchaseOption = {
+  id: number;
+  purchaseId: string;
+  customer: string | null;
+  productName: string | null;
+  quantity: number | null;
+  price: number | null;
+  dueDate: string | null;
+  status: "PURCHASESUBMIT" | "INSTRUCTION" | "ASSEMBLY" | "TEST" | "FINAL_INSPECTION" | "PACKAGING" | "WAITING_FOR_SHIPMENT" | null;
+  note: string | null;
+  createdTime: string | null;
+};

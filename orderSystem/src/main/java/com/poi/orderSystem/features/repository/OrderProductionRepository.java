@@ -9,7 +9,11 @@ import org.springframework.data.repository.query.Param;
 
 import com.poi.orderSystem.features.entity.OrderProduction;
 
-public interface OrderProductionRepository extends JpaRepository<OrderProduction, String> {
+public interface OrderProductionRepository extends JpaRepository<OrderProduction, Long> {
+
+	Optional<OrderProduction> findByPurchasePurchaseId(String purchaseId);
+
+	boolean existsByPurchase_Id(Long purchaseOrderId);
 
 	List<OrderProduction> findAllByOrderByCreatedTimeDesc();
 
@@ -27,7 +31,16 @@ public interface OrderProductionRepository extends JpaRepository<OrderProduction
 			from OrderProduction production
 			left join fetch production.purchase
 			left join fetch production.products
-			where production.purchaseId = :purchaseId
+			where production.purchase.purchaseId = :purchaseId
 			""")
 	Optional<OrderProduction> findByPurchaseIdWithPurchaseAndProducts(@Param("purchaseId") String purchaseId);
+
+	@Query("""
+			select distinct production
+			from OrderProduction production
+			left join fetch production.purchase
+			left join fetch production.products
+			where production.id = :id
+			""")
+	Optional<OrderProduction> findByIdWithPurchaseAndProducts(@Param("id") Long id);
 }

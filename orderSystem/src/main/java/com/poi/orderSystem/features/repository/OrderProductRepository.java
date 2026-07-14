@@ -1,6 +1,7 @@
 package com.poi.orderSystem.features.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -46,11 +47,30 @@ public interface OrderProductRepository extends JpaRepository<OrderProduct, Stri
 	List<OrderProduct> findByProcessInWithProductionAndPurchaseOrderByCreatedTimeDesc(
 			@Param("process") List<ProcessStatus> processes);
 
-	List<OrderProduct> findByProductionPurchaseId(String purchaseId);
+	List<OrderProduct> findByProductionPurchasePurchaseId(String purchaseId);
 
-	Long countByProductionPurchaseId(String purchaseId);
+	@Query("""
+			select product
+			from OrderProduct product
+			join fetch product.production production
+			join fetch production.purchase
+			where product.productQr = :productQr
+			""")
+	Optional<OrderProduct> findByProductQrWithProductionAndPurchase(@Param("productQr") String productQr);
 
-	Long countByProductionPurchaseIdAndProcess(String purchaseId, ProcessStatus process);
+	@Query("""
+			select product
+			from OrderProduct product
+			join fetch product.production production
+			join fetch production.purchase
+			where production.purchase.purchaseId = :purchaseId
+			order by product.createdTime desc
+			""")
+	List<OrderProduct> findByPurchaseIdWithProductionAndPurchase(@Param("purchaseId") String purchaseId);
 
-	void deleteByProductionPurchaseId(String purchaseId);
+	Long countByProductionPurchasePurchaseId(String purchaseId);
+
+	Long countByProductionPurchasePurchaseIdAndProcess(String purchaseId, ProcessStatus process);
+
+	void deleteByProductionPurchasePurchaseId(String purchaseId);
 }

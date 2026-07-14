@@ -12,6 +12,8 @@ import type { OrderLabelForm } from "../ordersidebar/OrderLabelFormCard";
 
 type LabelRow = {
   id: number;
+  purchaseDbId?: number;
+  productionDbId?: number;
   productionOrderId: string;
   productionOrderNo: string;
   qrData: string;
@@ -23,9 +25,21 @@ type LabelRow = {
   printedAt: string;
   createdAt: string;
   updatedAt: string;
+  customer: string;
+  quantity: number | null;
+  price: number | null;
+  dueDate: string | null;
+  purchaseStatus: string | null;
+  note: string | null;
+  purchaseCreatedTime: string | null;
+  productQrQuantity: number | null;
+  process: string | null;
+  isDefect: boolean;
 };
 
 type LabelResponse = {
+  purchaseDbId: number | null;
+  productionDbId: number | null;
   productQr: string;
   productionOrderId: string | null;
   productionOrderNo: string | null;
@@ -36,6 +50,16 @@ type LabelResponse = {
   printedAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  customer: string | null;
+  quantity: number | null;
+  price: number | null;
+  dueDate: string | null;
+  purchaseStatus: string | null;
+  note: string | null;
+  purchaseCreatedTime: string | null;
+  productQrQuantity: number | null;
+  process: string | null;
+  isDefect: boolean | null;
 };
 
 type ApiResponse<T> = {
@@ -160,6 +184,7 @@ export default function LabelsPage() {
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">
       <section className="flex min-w-0 flex-1 flex-col px-5 py-5">
         <ListToolbar
+          categoryKey="label"
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={handleSort}
@@ -209,6 +234,8 @@ function updateSortConditions(current: SortCondition<SortKey>[], key: SortKey) {
 function toSidebarOrder(row: LabelRow): Order {
   return {
     id: row.id,
+    purchaseDbId: row.purchaseDbId,
+    productionDbId: row.productionDbId,
     detailType: "label",
     orderNo: row.productionOrderNo,
     orderDate: row.createdAt,
@@ -222,11 +249,19 @@ function toSidebarOrder(row: LabelRow): Order {
     printedAt: row.printedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
-    customer: "-",
+    customer: row.customer,
     product: row.product,
-    quantity: row.productionOrderId,
-    unitPrice: "-",
-    dueDate: row.printedAt,
+    quantity: row.quantity == null ? "-" : String(row.quantity),
+    unitPrice: row.price == null ? "-" : String(row.price),
+    dueDate: row.dueDate ?? "-",
+    purchasePrice: row.price,
+    purchaseDueDate: row.dueDate,
+    purchaseStatus: row.purchaseStatus,
+    purchaseNote: row.note,
+    purchaseCreatedTime: row.purchaseCreatedTime,
+    productQrQuantity: row.productQrQuantity,
+    productProcessStatus: row.process ?? undefined,
+    isDefect: row.isDefect,
     status: row.printedAt === "-" ? "대기" : "출력완료",
     memo: `QR ${row.qrData}, line1 ${row.line1}, line2 ${row.line2}`,
   };
@@ -246,12 +281,16 @@ function toLabelRow(label: OrderLabelForm, index: number): LabelRow {
     printedAt: toDisplayDateTime(label.printedAt),
     createdAt: toDisplayDateTime(label.createdAt),
     updatedAt: toDisplayDateTime(label.updatedAt),
+    customer: "-", quantity: null, price: null, dueDate: null, purchaseStatus: null, note: null,
+    purchaseCreatedTime: null, productQrQuantity: null, process: null, isDefect: false,
   };
 }
 
 function toLabelRowFromApi(label: LabelResponse, index: number): LabelRow {
   return {
     id: index + 1,
+    purchaseDbId: label.purchaseDbId ?? undefined,
+    productionDbId: label.productionDbId ?? undefined,
     productionOrderId: label.productionOrderId ?? "-",
     productionOrderNo: label.productionOrderNo ?? "-",
     qrData: label.productQr,
@@ -263,6 +302,16 @@ function toLabelRowFromApi(label: LabelResponse, index: number): LabelRow {
     printedAt: toDisplayDateTime(label.printedAt ?? ""),
     createdAt: toDisplayDateTime(label.createdAt ?? ""),
     updatedAt: toDisplayDateTime(label.updatedAt ?? ""),
+    customer: label.customer ?? "-",
+    quantity: label.quantity,
+    price: label.price,
+    dueDate: label.dueDate,
+    purchaseStatus: label.purchaseStatus,
+    note: label.note,
+    purchaseCreatedTime: label.purchaseCreatedTime,
+    productQrQuantity: label.productQrQuantity,
+    process: label.process,
+    isDefect: Boolean(label.isDefect),
   };
 }
 

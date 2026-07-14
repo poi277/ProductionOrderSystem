@@ -12,6 +12,8 @@ import type { OrderShipmentForm } from "../ordersidebar/OrderShipmentFormCard";
 
 type Shipment = {
   id: number;
+  purchaseDbId?: number;
+  productionDbId?: number;
   createdAt: string;
   customer: string;
   productionOrderNo: string;
@@ -21,12 +23,24 @@ type Shipment = {
   productQr: string;
   productProcessNo: string;
   processName: string;
+  judgment: string;
+  completedAt: string;
   shippedAt: string;
   memo: string;
   updatedAt: string;
+  price: number | null;
+  dueDate: string | null;
+  purchaseStatus: string | null;
+  purchaseNote: string | null;
+  purchaseCreatedTime: string | null;
+  productQrQuantity: number | null;
+  process: string | null;
+  isDefect: boolean;
 };
 
 type ShipmentResponse = {
+  purchaseDbId: number | null;
+  productionDbId: number | null;
   shipmentId: string;
   productQr: string | null;
   productName: string | null;
@@ -40,6 +54,14 @@ type ShipmentResponse = {
   memo: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  price: number | null;
+  dueDate: string | null;
+  purchaseStatus: string | null;
+  note: string | null;
+  purchaseCreatedTime: string | null;
+  productQrQuantity: number | null;
+  process: string | null;
+  isDefect: boolean | null;
 };
 
 type ApiResponse<T> = {
@@ -53,24 +75,28 @@ const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://lo
 type SortKey = keyof Omit<Shipment, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
-  { label: "날짜", key: "createdAt" },
+  { label: "발주번호", key: "productionOrderNo" },
   { label: "고객사", key: "customer" },
-  { label: "지시번호", key: "productionOrderNo" },
   { label: "품명", key: "productName" },
-  { label: "수량", key: "quantity" },
-  { label: "LOT", key: "lotNo" },
-  { label: "QR", key: "productQr" },
+  { label: "발주수량", key: "quantity" },
+  { label: "Lot No.", key: "lotNo" },
+  { label: "제품QR", key: "productQr" },
+  { label: "공정순서", key: "processName" },
+  { label: "판정", key: "judgment" },
+  { label: "완료시간", key: "completedAt" },
 ];
 
 const shipmentColumns: DataListColumn<Shipment>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
-  { align: "center", header: "날짜", key: "createdAt", render: (row) => row.createdAt },
+  { align: "center", header: "발주번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "고객사", key: "customer", render: (row) => row.customer },
-  { align: "center", header: "지시번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { header: "품명", key: "productName", render: (row) => row.productName },
-  { align: "center", header: "수량", key: "quantity", render: (row) => row.quantity },
-  { align: "center", header: "LOT", key: "lotNo", render: (row) => row.lotNo },
-  { align: "center", header: "QR", key: "productQr", render: (row) => row.productQr },
+  { align: "center", header: "발주수량", key: "quantity", render: (row) => row.quantity },
+  { align: "center", header: "Lot No.", key: "lotNo", render: (row) => row.lotNo },
+  { align: "center", header: "제품QR", key: "productQr", render: (row) => row.productQr },
+  { align: "center", header: "공정순서", key: "processName", render: (row) => row.processName },
+  { align: "center", header: "판정", key: "judgment", render: (row) => row.judgment },
+  { align: "center", header: "완료시간", key: "completedAt", render: (row) => row.completedAt },
 ];
 
 export default function ShipmentsPage() {
@@ -225,15 +251,47 @@ export default function ShipmentsPage() {
     closeOrderSidebar();
   };
 
+  const handleCompleteAllRows = async () => {
+    if (shipments.length === 0 || !window.confirm(`${shipments.length}개 제품을 전체 출하 처리하시겠습니까?`)) {
+      return;
+    }
+
+    const response = await fetch(`${orderApiBaseUrl}/shipments/complete`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(shipments.map((row) => row.productQr)),
+    });
+
+    if (!response.ok) {
+      window.alert("전체 출하 처리에 실패했습니다.");
+      return;
+    }
+
+    setShipments([]);
+    setCheckedRowIds([]);
+    setSelectedRowId(null);
+    closeOrderSidebar();
+  };
+
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">
       <section className="flex min-w-0 flex-1 flex-col px-5 py-5">
         <ListToolbar
+          categoryKey="process"
           extraAction={{
             disabled: checkedRowIds.length === 0,
             label: "출하",
             onClick: handleCompleteSelectedRows,
           }}
+          extraActions={[
+            {
+              disabled: shipments.length === 0,
+              label: "전체출하",
+              onClick: handleCompleteAllRows,
+            },
+          ]}
           onDelete={handleDeleteSelectedRows}
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
@@ -283,6 +341,8 @@ function updateSortConditions(current: SortCondition<SortKey>[], key: SortKey) {
 function toSidebarOrder(row: Shipment): Order {
   return {
     id: row.id,
+    purchaseDbId: row.purchaseDbId,
+    productionDbId: row.productionDbId,
     detailType: "shipment",
     orderNo: row.productionOrderNo,
     orderDate: row.createdAt,
@@ -296,8 +356,16 @@ function toSidebarOrder(row: Shipment): Order {
     updatedAt: row.updatedAt,
     customer: row.customer,
     quantity: row.quantity,
-    unitPrice: "-",
-    dueDate: row.shippedAt,
+    unitPrice: row.price == null ? "-" : String(row.price),
+    dueDate: row.dueDate ?? "-",
+    purchasePrice: row.price,
+    purchaseDueDate: row.dueDate,
+    purchaseStatus: row.purchaseStatus,
+    purchaseNote: row.purchaseNote,
+    purchaseCreatedTime: row.purchaseCreatedTime,
+    productQrQuantity: row.productQrQuantity,
+    productProcessStatus: row.process ?? undefined,
+    isDefect: row.isDefect,
     status: "-",
     memo: row.memo,
   };
@@ -315,15 +383,21 @@ function toShipmentRow(shipment: OrderShipmentForm, index: number): Shipment {
     productQr: shipment.productQr,
     productProcessNo: shipment.productProcessNo,
     processName: shipment.processName,
+    judgment: "-",
+    completedAt: formatKoreanDateTimeWithoutYear(shipment.updatedAt || shipment.shippedAt),
     shippedAt: formatKoreanDateTimeWithoutYear(shipment.shippedAt),
     memo: shipment.memo || "-",
     updatedAt: formatKoreanDateTimeWithoutYear(shipment.updatedAt),
+    price: null, dueDate: null, purchaseStatus: null, purchaseNote: null, purchaseCreatedTime: null,
+    productQrQuantity: null, process: null, isDefect: false,
   };
 }
 
 function toShipmentRowFromApi(shipment: ShipmentResponse, index: number): Shipment {
   return {
     id: index + 1,
+    purchaseDbId: shipment.purchaseDbId ?? undefined,
+    productionDbId: shipment.productionDbId ?? undefined,
     createdAt: formatKoreanDateTimeWithoutYear(shipment.createdAt),
     customer: shipment.customer ?? "-",
     productionOrderNo: shipment.productionId ?? "-",
@@ -333,8 +407,18 @@ function toShipmentRowFromApi(shipment: ShipmentResponse, index: number): Shipme
     productQr: shipment.productQr ?? "-",
     productProcessNo: shipment.productProcessNo ?? shipment.shipmentId,
     processName: shipment.processName ?? "-",
+    judgment: "-",
+    completedAt: formatKoreanDateTimeWithoutYear(shipment.updatedAt ?? shipment.shippedAt),
     shippedAt: formatKoreanDateTimeWithoutYear(shipment.shippedAt),
     memo: shipment.memo ?? "-",
     updatedAt: formatKoreanDateTimeWithoutYear(shipment.updatedAt),
+    price: shipment.price,
+    dueDate: shipment.dueDate,
+    purchaseStatus: shipment.purchaseStatus,
+    purchaseNote: shipment.note,
+    purchaseCreatedTime: shipment.purchaseCreatedTime,
+    productQrQuantity: shipment.productQrQuantity,
+    process: shipment.process,
+    isDefect: Boolean(shipment.isDefect),
   };
 }

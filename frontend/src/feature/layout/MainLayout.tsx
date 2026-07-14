@@ -11,12 +11,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col bg-white text-slate-950 md:flex-row">
       <Sidebar />
-      <OrderSidebarProvider>
         <div className="flex min-w-0 flex-1 shrink flex-col">
           <LayoutHeader />
           <div className="flex min-w-0 flex-1 shrink flex-col lg:flex-row">{children}</div>
         </div>
-      </OrderSidebarProvider>
     </div>
   );
 }

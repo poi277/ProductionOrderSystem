@@ -32,7 +32,6 @@ type OrderPurchaseResponse = {
   productName: string | null;
   quantity: number | null;
   price: number | null;
-  purchaseDate: string | null;
   dueDate: string | null;
   status: string | null;
   note: string | null;
@@ -41,11 +40,13 @@ type OrderPurchaseResponse = {
 const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
 const productProcessLabels: Record<string, string> = {
-  PRODUCTION_INSTRUCTION_CHECK: "생산지시",
-  ASSEMBLY: "조립",
-  FUNCTION_TEST: "기능검사",
-  SHIPMENT_INSPECTION: "출하검사",
-  SHIPMENT: "출하완료",
+  PURCHASESUBMIT: "발주서 접수",
+  INSTRUCTION: "생산지시",
+  ASSEMBLY: "생산중",
+  TEST: "기능검사",
+  FINAL_INSPECTION: "출하검사",
+  PACKAGING: "포장",
+  WAITING_FOR_SHIPMENT: "납품대기",
 };
 
 const text = {
@@ -71,7 +72,6 @@ const text = {
 function toForm(order: Order): OrderPurchaseForm {
   return {
     purchaseId: order.orderNo,
-    orderDate: order.orderDate === "-" ? "" : order.orderDate.replaceAll(".", "-"),
     customer: order.customer === "-" ? "" : order.customer,
     product: order.product === "-" ? "" : order.product,
     quantity: order.quantity === "-" ? "" : order.quantity.replaceAll(",", ""),
@@ -228,7 +228,7 @@ function toProductProcessCode(value: string) {
   }
 
   const found = Object.entries(productProcessLabels).find(([, label]) => label === value);
-  return found?.[0] ?? "PRODUCTION_INSTRUCTION_CHECK";
+  return found?.[0] ?? "ASSEMBLY";
 }
 
 export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
@@ -672,7 +672,10 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitMessage("");
 
       try {
-        const response = await fetch(`${orderApiBaseUrl}/product-processes/${encodeURIComponent(order.productQr ?? "")}`, {
+        const updateUrl = order.processUpdateScope === "product"
+          ? `${orderApiBaseUrl}/product-processes/${encodeURIComponent(order.productQr ?? "")}`
+          : `${orderApiBaseUrl}/product-processes/by-production/${encodeURIComponent(processForm.productionOrderNo)}`;
+        const response = await fetch(updateUrl, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -685,15 +688,18 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         }
 
         setSubmitStatus("success");
-        setSubmitMessage("생산현황이 수정되었습니다.");
+        setSubmitMessage(order.processUpdateScope === "product" ? "제품 공정이 수정되었습니다." : "생산현황이 수정되었습니다.");
         setIsEditing(false);
         window.dispatchEvent(
-          new CustomEvent<{ processId: number; order: OrderProcessForm }>("product-process-updated", {
+          new CustomEvent<{ processId: number; order: OrderProcessForm }>(
+            order.processUpdateScope === "product" ? "product-history-process-updated" : "product-process-updated",
+            {
             detail: {
               processId: order.id,
               order: processForm,
             },
-          }),
+            },
+          ),
         );
       } catch (error) {
         setSubmitStatus("error");
@@ -735,7 +741,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
         <div className="flex gap-2">
           <button
-            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
+            className={`h-8 flex-1 rounded-md text-xs font-bold text-white disabled:bg-slate-300 ${
+              order.processUpdateScope === "product" ? "bg-gray-500" : "bg-black"
+            }`}
             disabled={submitStatus === "saving" || (isEditing && !hasProcessChanges)}
             type="submit"
           >
@@ -892,7 +900,6 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           productName: form.product,
           quantity: Number(form.quantity),
           unitPrice: form.unitPrice ? Number(form.unitPrice) : null,
-          purchaseDate: form.orderDate || null,
           dueDate: form.dueDate,
           note: form.memo,
         }),
@@ -953,7 +960,6 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         eyebrow=""
         form={form}
         onChange={updateForm}
-        showOrderDate
         title=""
       />
 

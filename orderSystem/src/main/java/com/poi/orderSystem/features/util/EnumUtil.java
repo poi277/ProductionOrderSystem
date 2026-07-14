@@ -9,14 +9,14 @@ public class EnumUtil {
 	}
 
 	public enum ProcessStatus {
+		PURCHASESUBMIT("발주서 접수"), // 발주서 접수
 		INSTRUCTION("생산 지시"), // 제품 QR 생성
-		ASSEMBLY("생산"), // 조립 공정
-		TEST("TEST"), // 테스트 공정
-		FINAL_INSPECTION("최종검수"), // 최종 검수
+		ASSEMBLY("생산중"), // 조립 공정
+		TEST("기능검사"), // 테스트 공정
+		FINAL_INSPECTION("출하검사"), // 최종 검수
 		PACKAGING("포장"), // 포장
 		WAITING_FOR_SHIPMENT("납품대기"), // 납품 대기
-		SHIPPED("출하 완료"); // 출하 완료
-
+		CANCEL("취소"); // 주문이 취소된상태
 		private final String label;
 
 		ProcessStatus(String label) {

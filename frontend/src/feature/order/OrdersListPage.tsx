@@ -11,24 +11,27 @@ import type { Order } from "./OrdersTypes";
 
 type SortKey =
   | "orderNo"
-  | "orderDate"
   | "customer"
   | "product"
   | "quantity"
-  | "totalAmount"
-  | "dueDate";
+  | "dueDate"
+  | "memo";
 
 type OrderPurchaseResponse = {
+  id: number;
   purchaseId: string;
   customer: string | null;
   productName: string | null;
   quantity: number | null;
   price: number | null;
-  purchaseDate: string | null;
   dueDate: string | null;
   status: string | null;
   note: string | null;
   createdTime: string | null;
+  productionDbId: number | null;
+  lot: string | null;
+  productQrQuantity: number | null;
+  productQr: string | null;
 };
 
 type ApiResponse<T> = {
@@ -52,7 +55,6 @@ const text = {
   loadError: "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\uc744\u0020\uc870\ud68c\ud558\uc9c0\u0020\ubabb\ud588\uc2b5\ub2c8\ub2e4\u002e",
   loading: "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\uc744\u0020\ubd88\ub7ec\uc624\ub294\u0020\uc911\uc785\ub2c8\ub2e4\u002e",
   memo: "\ube44\uace0",
-  orderDate: "\ubc1c\uc8fc\uc77c",
   orderNo: "\ubc1c\uc8fc\ubc88\ud638",
   product: "\ud488\uba85",
   orderAmount: "\ubc1c\uc8fc\uae08\uc561",
@@ -65,24 +67,22 @@ const text = {
 };
 
 const sortButtons: ListOption<SortKey>[] = [
-  { label: text.orderDate, key: "orderDate" },
-  { label: text.customer, key: "customer" },
   { label: text.orderNo, key: "orderNo" },
+  { label: text.customer, key: "customer" },
   { label: text.product, key: "product" },
   { label: text.quantity, key: "quantity" },
-  { label: text.orderAmount, key: "totalAmount" },
   { label: text.dueDate, key: "dueDate" },
+  { label: text.memo, key: "memo" },
 ];
 
 const orderColumns: DataListColumn<Order>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
-  { align: "center", header: text.orderDate, key: "orderDate", render: (row) => row.orderDate },
-  { align: "center", header: text.customer, key: "customer", render: (row) => row.customer },
   { align: "center", header: text.orderNo, key: "orderNo", render: (row) => row.orderNo },
+  { align: "center", header: text.customer, key: "customer", render: (row) => row.customer },
   { header: text.product, key: "product", render: (row) => row.product },
-  { align: "center", header: text.quantity, key: "quantity", render: (row) => row.quantity },
-  { align: "center", header: text.orderAmount, key: "totalAmount", render: (row) => row.totalAmount ?? "-" },
+  { align: "center", header: "\ubc1c\uc8fc\uc218\ub7c9", key: "quantity", render: (row) => row.quantity },
   { align: "center", header: text.dueDate, key: "dueDate", render: (row) => row.dueDate },
+  { header: text.memo, key: "memo", render: (row) => row.memo },
 ];
 
 export default function OrdersListPage() {
@@ -97,7 +97,6 @@ export default function OrdersListPage() {
     clearOrderSidebarSelection,
     closeOrderSidebar,
     openOrderDetailSidebar,
-    rightPanelMode,
     selectedOrder,
   } = useOrderSidebar();
 
@@ -142,6 +141,7 @@ export default function OrdersListPage() {
   useEffect(() => {
     const handleCreated = (event: Event) => {
       const createdOrder = (event as CustomEvent<OrderPurchaseResponse>).detail;
+      if (!createdOrder?.purchaseId) return;
 
       setOrders((current) =>
         [toOrderRow(createdOrder, 0), ...current].map((order, index) => ({ ...order, id: index + 1 })),
@@ -245,7 +245,7 @@ export default function OrdersListPage() {
 
     const responses = await Promise.all(
       selectedOrders.map((order) =>
-        fetch(`${orderListApiUrl}/${encodeURIComponent(order.orderNo)}`, {
+        fetch(`${orderListApiUrl}/${order.purchaseDbId}`, {
           method: "DELETE",
         }),
       ),
@@ -270,6 +270,7 @@ export default function OrdersListPage() {
       <section className="flex min-w-0 flex-1 flex-col">
         <div className="flex min-w-0 flex-1 flex-col px-5 py-5">
           <ListToolbar
+            categoryKey="order"
             onSearchFieldChange={setSearchField}
             onSearchTextChange={setSearchText}
             onSort={handleSort}
@@ -291,7 +292,7 @@ export default function OrdersListPage() {
             onCheckboxChange={handleToggleOrderCheckbox}
             onRowClick={handleSelectOrder}
             rows={isLoading || errorMessage ? [] : sortedOrders}
-            selectedRowId={rightPanelMode === "detail" ? selectedOrder?.id : null}
+            selectedRowId={selectedOrder?.id ?? null}
           />
         </div>
       </section>
@@ -302,8 +303,16 @@ export default function OrdersListPage() {
 function toOrderRow(order: OrderPurchaseResponse, index: number): Order {
   return {
     id: index + 1,
+    purchaseDbId: order.id,
+    productionDbId: order.productionDbId ?? undefined,
+    purchasePrice: order.price,
+    purchaseStatus: order.status,
+    purchaseNote: order.note,
+    purchaseCreatedTime: order.createdTime,
+    purchaseDueDate: order.dueDate,
+    productQrQuantity: order.productQrQuantity,
     orderNo: order.purchaseId,
-    orderDate: formatDate(order.purchaseDate),
+    orderDate: "-",
     customer: order.customer ?? "-",
     product: order.productName ?? "-",
     quantity: formatNumber(order.quantity),
@@ -313,6 +322,9 @@ function toOrderRow(order: OrderPurchaseResponse, index: number): Order {
     status: formatStatus(order.status),
     memo: order.note ?? "-",
     createdAt: formatDateTime(order.createdTime),
+    productQr: order.productQr ?? undefined,
+    lotNo: order.lot ?? undefined,
+    instructionQuantity: order.productQrQuantity == null ? undefined : String(order.productQrQuantity),
   };
 }
 
@@ -355,10 +367,6 @@ function formatStatus(value: string | null) {
 }
 
 function getSortValue(order: Order, key: SortKey) {
-  if (key === "totalAmount") {
-    return Number((order.totalAmount ?? "0").replaceAll(",", ""));
-  }
-
   if (key === "quantity") {
     return Number(order.quantity.replaceAll(",", ""));
   }

@@ -31,12 +31,12 @@ const mainMenus: Menu[] = [
   { activeKey: "dashboard", label: "전체현황", href: "/dashboard", icon: "dashboard" },
   { activeKey: "order", label: "발주서", href: "/orders", icon: "orders" },
   { activeKey: "production", label: "생산지시", href: "/production-orders", icon: "production" },
-  { activeKey: "process", label: "생산현황", href: "/product-processes", icon: "process" },
-  { activeKey: "shipment", label: "검수/포장", href: "/shipments", icon: "shipment" },
-  { activeKey: "label", label: "라벨", href: "/labels", icon: "label" },
-  { activeKey: "history", label: "공정이력", href: "/process-histories", icon: "history" },
-  { activeKey: "history", label: "제품이력", href: "/histories", icon: "history" },
+  { activeKey: "processOverview", label: "공정현황", href: "/product-processes", icon: "process" },
+  { activeKey: "process", label: "공정이력", href: "/process-histories", icon: "history" },
+  { activeKey: "process", label: "납품/출하", href: "/shipments", icon: "shipment" },
+  { activeKey: "label", label: "라벨출력", href: "/labels", icon: "label" },
   { activeKey: "qr", label: "QR조회", href: "/qr-search", icon: "qr" },
+  { activeKey: "history", label: "제품이력", href: "/histories", icon: "history" },
   { activeKey: "scan", label: "스캔", href: "/scan", icon: "scan" },
 ];
 

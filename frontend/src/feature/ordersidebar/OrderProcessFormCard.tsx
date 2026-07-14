@@ -13,8 +13,10 @@ export type OrderProcessForm = {
 };
 
 const processOptions = [
-  { label: "생산", value: "ASSEMBLY" },
-  { label: "TEST", value: "TEST" },
+  { label: "생산중", value: "ASSEMBLY" },
+  { label: "기능검사", value: "TEST" },
+  { label: "출하검사", value: "FINAL_INSPECTION" },
+  { label: "포장", value: "PACKAGING" },
 ];
 
 type OrderProcessFormCardProps = {

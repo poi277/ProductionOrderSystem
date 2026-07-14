@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import DeleteActionButton from "./DeleteActionButton";
+import { getCategoryActiveClass } from "./categoryActiveStyles";
+import type { CategoryActiveKey } from "./categoryActiveStyles";
 
 export type SortDirection = "asc" | "desc";
 
@@ -16,6 +19,7 @@ export type ListOption<TKey extends string> = {
 };
 
 type ListToolbarProps<TKey extends string> = {
+  categoryKey?: CategoryActiveKey;
   options: ListOption<TKey>[];
   sortConditions: SortCondition<TKey>[];
   searchField: TKey;
@@ -29,11 +33,18 @@ type ListToolbarProps<TKey extends string> = {
     label: string;
     onClick: () => void;
   };
+  extraActions?: Array<{
+    disabled?: boolean;
+    label: string;
+    onClick: () => void;
+  }>;
   onDelete?: () => void;
+  afterDelete?: ReactNode;
   selectedCount?: number;
 };
 
 export default function ListToolbar<TKey extends string>({
+  categoryKey = "settings",
   options,
   sortConditions,
   searchField,
@@ -43,7 +54,9 @@ export default function ListToolbar<TKey extends string>({
   onSearchTextChange,
   onSort,
   extraAction,
+  extraActions,
   onDelete,
+  afterDelete,
   selectedCount = 0,
 }: ListToolbarProps<TKey>) {
   const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false);
@@ -63,7 +76,7 @@ export default function ListToolbar<TKey extends string>({
             <button
               className={`flex h-9 items-center gap-2 rounded-full px-4 text-xs font-bold ${
                 condition
-                  ? "bg-[#143f80] text-white"
+                  ? getCategoryActiveClass(categoryKey)
                   : "bg-slate-100 text-slate-500 hover:bg-slate-200"
               }`}
               key={button.key}
@@ -182,6 +195,7 @@ export default function ListToolbar<TKey extends string>({
           )}
         </div>
         {onDelete && <DeleteActionButton disabled={selectedCount === 0} onClick={onDelete} selectedCount={selectedCount} />}
+        {afterDelete}
         {extraAction && (
           <button
             className="h-10 rounded-lg bg-teal-600 px-4 text-sm font-bold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
@@ -192,6 +206,17 @@ export default function ListToolbar<TKey extends string>({
             {extraAction.label}
           </button>
         )}
+        {extraActions?.map((action) => (
+          <button
+            className="h-10 rounded-lg bg-slate-800 px-4 text-sm font-bold text-white transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={action.disabled}
+            key={action.label}
+            onClick={action.onClick}
+            type="button"
+          >
+            {action.label}
+          </button>
+        ))}
       </div>
     </div>
   );

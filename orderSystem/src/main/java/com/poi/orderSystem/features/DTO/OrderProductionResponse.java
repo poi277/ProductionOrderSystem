@@ -12,10 +12,16 @@ import lombok.Getter;
 @Getter
 public class OrderProductionResponse {
 
+	private final Long id;
+	private final Long purchaseDbId;
 	private final String purchaseId;
 	private final String customer;
 	private final String dueDate;
 	private final String productName;
+	private final Integer price;
+	private final ProcessStatus status;
+	private final String note;
+	private final String purchaseCreatedTime;
 	private final String lot;
 	private final String productQr;
 	private final Integer purchaseQuantity;
@@ -37,17 +43,17 @@ public class OrderProductionResponse {
 				.mapToInt(Long::intValue)
 				.sum();
 
+		this.id = production.getId();
+		this.purchaseDbId = purchase == null ? null : purchase.getId();
 		this.purchaseId = production.getPurchaseId();
 		this.customer = purchase == null ? null : purchase.getCustomer();
 		this.dueDate = purchase == null ? null : purchase.getDueDate();
 		this.productName = purchase == null ? null : purchase.getProductName();
-		this.lot = production.getProducts() == null
-				? ""
-				: production.getProducts().stream()
-						.map((product) -> product.getLot())
-						.filter((lot) -> lot != null && !lot.isBlank())
-						.findFirst()
-						.orElse("");
+		this.price = purchase == null ? null : purchase.getPrice();
+		this.status = purchase == null ? null : purchase.getStatus();
+		this.note = purchase == null ? null : purchase.getNote();
+		this.purchaseCreatedTime = purchase == null || purchase.getCreatedTime() == null ? null : purchase.getCreatedTime().toString();
+		this.lot = production.getLot() == null ? "" : production.getLot();
 		this.productQr = production.getProducts() == null
 				? ""
 				: production.getProducts().stream()
@@ -57,9 +63,9 @@ public class OrderProductionResponse {
 						.orElse("");
 		this.purchaseQuantity = purchase == null ? productCount : purchase.getQuantity();
 		this.instructionQuantity = productCount;
-		this.productQrQuantity = productCount;
+		this.productQrQuantity = production.getProductQrQuantity();
 		this.completedQuantity = 0;
-		this.shippedQuantity = processCounts.getOrDefault(ProcessStatus.SHIPPED.name(), 0L).intValue();
+		this.shippedQuantity = processCounts.getOrDefault(ProcessStatus.WAITING_FOR_SHIPMENT.name(), 0L).intValue();
 		this.createdTime = production.getCreatedTime() == null ? null : production.getCreatedTime().toString();
 		this.processCounts = processCounts;
 		this.processLabels = processLabels();

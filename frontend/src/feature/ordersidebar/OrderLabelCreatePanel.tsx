@@ -17,7 +17,7 @@ const text = {
   saveError: "라벨 저장에 실패했습니다.",
   saveSuccess: "라벨이 생성되었습니다.",
   saveUnknownError: "라벨 저장 중 오류가 발생했습니다.",
-  submit: "제출하기",
+  submit: "입력하기",
   submitting: "제출 중",
   title: "새 라벨 입력",
 };
