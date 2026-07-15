@@ -54,11 +54,12 @@ public class OrderProductionService {
 				.orElseGet(OrderProduction::new);
 		int previousQuantity = production.getProductQrQuantity() == null ? 0 : production.getProductQrQuantity();
 		production.setPurchase(purchase);
-		OrderProduction savedProduction = orderProductionRepository.save(production);
+		OrderProduction savedProduction = production.getId() == null
+				? orderProductionRepository.save(production)
+				: production;
 		synchronizeOrderProducts(request, savedProduction, previousQuantity);
 		savedProduction.setProductQrQuantity(request.getProductionQuantity());
 		savedProduction.setLot(normalizeLot(request.getLot()));
-		orderProductionRepository.save(savedProduction);
 		if (request.getProductionQuantity() != null && request.getProductionQuantity() > 0) {
 			updatePurchaseStatus(purchase, ProcessStatus.INSTRUCTION);
 		}
@@ -76,17 +77,15 @@ public class OrderProductionService {
 		}
 		int previousQuantity = production.getProductQrQuantity() == null ? 0 : production.getProductQrQuantity();
 		production.setPurchase(purchase);
-		OrderProduction savedProduction = orderProductionRepository.save(production);
-		synchronizeOrderProducts(request, savedProduction, previousQuantity);
-		savedProduction.setProductQrQuantity(request.getProductionQuantity());
-		savedProduction.setLot(normalizeLot(request.getLot()));
-		orderProductionRepository.save(savedProduction);
+		synchronizeOrderProducts(request, production, previousQuantity);
+		production.setProductQrQuantity(request.getProductionQuantity());
+		production.setLot(normalizeLot(request.getLot()));
 		if (purchase.getStatus() == ProcessStatus.PURCHASESUBMIT
 				&& request.getProductionQuantity() != null
 				&& request.getProductionQuantity() > 0) {
 			updatePurchaseStatus(purchase, ProcessStatus.INSTRUCTION);
 		}
-		return toProductionResponse(findProductionWithRelations(savedProduction.getId(), savedProduction));
+		return toProductionResponse(findProductionWithRelations(production.getId(), production));
 	}
 
 	@Transactional
@@ -140,7 +139,6 @@ public class OrderProductionService {
 			OrderProduct source = index <= existingProducts.size() ? existingProducts.get(index - 1) : null;
 
 			if (source != null && desiredQr.equals(source.getProductQr())) {
-				productsToSave.add(source);
 				continue;
 			}
 
@@ -161,7 +159,9 @@ public class OrderProductionService {
 			productsToSave.add(product);
 		}
 
-		orderProductRepository.saveAll(productsToSave);
+		if (!productsToSave.isEmpty()) {
+			orderProductRepository.saveAll(productsToSave);
+		}
 		if (!replacedProducts.isEmpty()) {
 			orderProductRepository.deleteAll(replacedProducts);
 		}

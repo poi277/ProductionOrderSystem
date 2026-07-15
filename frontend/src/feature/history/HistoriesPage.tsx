@@ -9,10 +9,12 @@ import type { ListOption, SortCondition } from "../common/ListToolbar";
 import type { Order } from "../order/OrdersTypes";
 import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
 import type { OrderHistoryForm } from "../ordersidebar/OrderHistoryFormCard";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import { useApiMutationRevision } from "../../../util/apiMutationStore";
 
 type HistoryRow = {
   id: number;
-  historyId: number;
   productionOrderNo: string;
   productQr: string;
   productName: string;
@@ -22,9 +24,8 @@ type HistoryRow = {
 };
 
 type HistoryResponse = {
-  historyId: number;
   productQr: string | null;
-  productionId: string | null;
+  purchaseId: string | null;
   productName: string | null;
   note: string | null;
   status: string | null;
@@ -37,12 +38,9 @@ type ApiResponse<T> = {
   data: T;
 };
 
-const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
-
 type SortKey = keyof Omit<HistoryRow, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
-  { label: "이력번호", key: "historyId" },
   { label: "발주(생산)번호", key: "productionOrderNo" },
   { label: "제품 QR", key: "productQr" },
   { label: "제품명", key: "productName" },
@@ -53,7 +51,6 @@ const sortButtons: ListOption<SortKey>[] = [
 
 const historyColumns: DataListColumn<HistoryRow>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
-  { align: "center", header: "이력번호", key: "historyId", render: (row) => row.historyId },
   { align: "center", header: "발주(생산)번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "제품 QR", key: "productQr", render: (row) => row.productQr },
   { header: "제품명", key: "productName", render: (row) => row.productName },
@@ -67,6 +64,7 @@ const historyColumns: DataListColumn<HistoryRow>[] = [
 ];
 
 export default function HistoriesPage() {
+  const mutationRevision = useApiMutationRevision();
   const [histories, setHistories] = useState<HistoryRow[]>([]);
   const [loadError, setLoadError] = useState("");
   const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
@@ -79,10 +77,10 @@ export default function HistoriesPage() {
   useEffect(() => {
     const loadHistories = async () => {
       try {
-        const response = await fetch(`${orderApiBaseUrl}/histories`);
+        const response = await apiClient(orderEndpoints.histories);
 
         if (!response.ok) {
-          setLoadError("제품이력 목록을 불러오지 못했습니다.");
+          setLoadError(await getApiErrorMessage(response, "제품이력 목록을 불러오지 못했습니다."));
           setHistories([]);
           return;
         }
@@ -97,7 +95,7 @@ export default function HistoriesPage() {
     };
 
     void loadHistories();
-  }, []);
+  }, [mutationRevision]);
 
   useEffect(() => {
     const handleCreate = (event: Event) => {
@@ -110,19 +108,19 @@ export default function HistoriesPage() {
 
     const handleUpdate = (event: Event) => {
       const { historyId, order: updatedHistory } = (
-        event as CustomEvent<{ historyId: number; order: OrderHistoryForm }>
+        event as CustomEvent<{ historyId: string; order: OrderHistoryForm }>
       ).detail;
 
       setHistories((current) =>
-        current.map((row) => (row.id === historyId ? { ...toHistoryRow(updatedHistory, row.id - 1), id: row.id } : row)),
+        current.map((row) => (row.productQr === historyId ? { ...toHistoryRow(updatedHistory, row.id - 1), id: row.id } : row)),
       );
     };
 
     const handleDelete = (event: Event) => {
-      const deletedHistoryId = (event as CustomEvent<number>).detail;
+      const deletedHistoryId = (event as CustomEvent<string>).detail;
 
       setHistories((current) =>
-        current.filter((row) => row.id !== deletedHistoryId).map((row, index) => ({ ...row, id: index + 1 })),
+        current.filter((row) => row.productQr !== deletedHistoryId).map((row, index) => ({ ...row, id: index + 1 })),
       );
       setSelectedRowId(null);
       closeOrderSidebar();
@@ -169,14 +167,15 @@ export default function HistoriesPage() {
 
     const responses = await Promise.all(
       selectedRows.map((row) =>
-        fetch(`${orderApiBaseUrl}/histories/${encodeURIComponent(row.historyId)}`, {
+        apiClient(orderEndpoints.history(row.productQr), {
           method: "DELETE",
         }),
       ),
     );
 
-    if (responses.some((response) => !response.ok)) {
-      window.alert("선택한 제품이력 삭제에 실패했습니다.");
+    const failedResponse = responses.find((response) => !response.ok);
+    if (failedResponse) {
+      window.alert(await getApiErrorMessage(failedResponse, "선택한 제품이력 삭제에 실패했습니다."));
       return;
     }
 
@@ -207,6 +206,10 @@ export default function HistoriesPage() {
           sortConditions={sortConditions}
         />
         <DataListTable
+          categoryKey="history"
+          onColumnSort={(key) => handleSort(key as SortKey)}
+          sortableColumnKeys={sortButtons.map((option) => option.key)}
+          sortConditions={sortConditions}
           checkedRowIds={checkedRowIds}
           columns={historyColumns}
           emptyMessage={loadError || "리스트가 비어있습니다."}
@@ -245,7 +248,6 @@ function toSidebarOrder(row: HistoryRow): Order {
   return {
     id: row.id,
     detailType: "history",
-    historyId: row.historyId,
     orderNo: row.productionOrderNo,
     orderDate: "-",
     productionOrderNo: row.productionOrderNo,
@@ -264,7 +266,6 @@ function toSidebarOrder(row: HistoryRow): Order {
 function toHistoryRow(history: OrderHistoryForm, index: number): HistoryRow {
   return {
     id: index + 1,
-    historyId: Number(history.historyId || 0),
     productionOrderNo: history.productionOrderNo || "-",
     productQr: history.productQr || "-",
     productName: history.productName || "-",
@@ -277,8 +278,7 @@ function toHistoryRow(history: OrderHistoryForm, index: number): HistoryRow {
 function toHistoryRowFromApi(history: HistoryResponse, index: number): HistoryRow {
   return {
     id: index + 1,
-    historyId: history.historyId,
-    productionOrderNo: history.productionId ?? "-",
+    productionOrderNo: history.purchaseId ?? "-",
     productQr: history.productQr ?? "-",
     productName: history.productName ?? "-",
     status: toHistoryStatusLabel(history.status),

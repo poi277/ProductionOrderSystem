@@ -4,13 +4,15 @@ import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import OrderLabelFormCard from "./OrderLabelFormCard";
 import type { OrderLabelForm } from "./OrderLabelFormCard";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import InlineNotice from "../common/InlineNotice";
+import CreatePanelActionButtons from "./CreatePanelActionButtons";
 
 type OrderLabelCreatePanelProps = {
   onCancel: () => void;
   submitButtonClassName: string;
 };
-
-const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
 const text = {
   cancel: "취소",
@@ -77,7 +79,7 @@ export default function OrderLabelCreatePanel({ onCancel, submitButtonClassName 
     setSubmitMessage("");
 
     try {
-      const response = await fetch(`${orderApiBaseUrl}/labels`, {
+      const response = await apiClient(orderEndpoints.labels, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -86,7 +88,7 @@ export default function OrderLabelCreatePanel({ onCancel, submitButtonClassName 
       });
 
       if (!response.ok) {
-        throw new Error(text.saveError);
+        throw new Error(await getApiErrorMessage(response, text.saveError));
       }
 
       window.dispatchEvent(new CustomEvent<OrderLabelForm>("label-created", { detail: form }));
@@ -105,28 +107,9 @@ export default function OrderLabelCreatePanel({ onCancel, submitButtonClassName 
     <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleSubmit}>
       <OrderLabelFormCard form={form} onChange={updateForm} title="" />
 
-      <div className="flex gap-2">
-        <button
-          className={`h-8 flex-1 rounded-md ${submitButtonClassName} text-xs font-bold disabled:bg-slate-300`}
-          disabled={submitStatus === "saving"}
-          type="submit"
-        >
-          {submitStatus === "saving" ? text.submitting : text.submit}
-        </button>
-        <button
-          className="h-8 flex-1 rounded-md border border-slate-200 bg-white text-xs font-bold text-slate-500"
-          onClick={onCancel}
-          type="button"
-        >
-          {text.cancel}
-        </button>
-      </div>
+      <CreatePanelActionButtons cancelText={text.cancel} isSaving={submitStatus === "saving"} onCancel={onCancel} submitButtonClassName={submitButtonClassName} submitText={text.submit} submittingText={text.submitting} />
 
-      {submitMessage && (
-        <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
-          {submitMessage}
-        </p>
-      )}
+      <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
     </form>
   );
 }

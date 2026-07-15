@@ -1,7 +1,7 @@
 package com.poi.orderSystem.features.DTO;
 
 
-import com.poi.orderSystem.features.util.EnumUtil.HistoryStatus;
+import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -15,13 +15,7 @@ public class OrderHistoryRequest {
 	private String productQr;
 
 	private String productionId;
-	private String productName;
-	private String processName;
-	private String judgment;
-	private String defectType;
-	private String worker;
-	private String equipment;
-	private String note;
-	private HistoryStatus status;
+	private Boolean isDefect;
+	private ProcessStatus process;
 
 }

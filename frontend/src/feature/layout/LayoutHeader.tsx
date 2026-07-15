@@ -30,8 +30,11 @@ const headerConfigs: Record<string, HeaderConfig> = {
   "/histories": {
     title: "제품이력",
   },
+  "/order-purchase-histories": {
+    title: "발주이력",
+  },
   "/qr-search": { title: "QR조회" },
-  "/settings/users": { title: "사용자 관리" },
+  "/settings/users": { title: "내 정보" },
   "/settings/permissions": { title: "권한 설정" },
 };
 

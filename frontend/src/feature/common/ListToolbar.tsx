@@ -3,8 +3,9 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import DeleteActionButton from "./DeleteActionButton";
-import { getCategoryActiveClass } from "./categoryActiveStyles";
 import type { CategoryActiveKey } from "./categoryActiveStyles";
+import { useAsyncAction } from "./useAsyncAction";
+import SavingButtonContent from "./SavingButtonContent";
 
 export type SortDirection = "asc" | "desc";
 
@@ -31,28 +32,25 @@ type ListToolbarProps<TKey extends string> = {
   extraAction?: {
     disabled?: boolean;
     label: string;
-    onClick: () => void;
+    onClick: () => void | Promise<void>;
   };
   extraActions?: Array<{
     disabled?: boolean;
     label: string;
-    onClick: () => void;
+    onClick: () => void | Promise<void>;
   }>;
-  onDelete?: () => void;
+  onDelete?: () => void | Promise<void>;
   afterDelete?: ReactNode;
   selectedCount?: number;
 };
 
 export default function ListToolbar<TKey extends string>({
-  categoryKey = "settings",
   options,
-  sortConditions,
   searchField,
   searchOptions,
   searchText,
   onSearchFieldChange,
   onSearchTextChange,
-  onSort,
   extraAction,
   extraActions,
   onDelete,
@@ -68,28 +66,6 @@ export default function ListToolbar<TKey extends string>({
 
   return (
     <div className="mb-3 flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
-        {options.map((button) => {
-          const condition = sortConditions.find((item) => item.key === button.key);
-
-          return (
-            <button
-              className={`flex h-9 items-center gap-2 rounded-full px-4 text-xs font-bold ${
-                condition
-                  ? getCategoryActiveClass(categoryKey)
-                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-              }`}
-              key={button.key}
-              onClick={() => onSort(button.key)}
-              type="button"
-            >
-              {button.label}
-              <SortIcon active={Boolean(condition)} direction={condition?.direction ?? "asc"} />
-            </button>
-          );
-        })}
-      </div>
-
       <div className="flex w-full items-start gap-2">
         <div
           className="relative min-w-[360px] max-w-[560px] flex-1"
@@ -194,48 +170,41 @@ export default function ListToolbar<TKey extends string>({
             </div>
           )}
         </div>
-        {onDelete && <DeleteActionButton disabled={selectedCount === 0} onClick={onDelete} selectedCount={selectedCount} />}
         {afterDelete}
-        {extraAction && (
-          <button
-            className="h-10 rounded-lg bg-teal-600 px-4 text-sm font-bold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={extraAction.disabled}
-            onClick={extraAction.onClick}
-            type="button"
-          >
-            {extraAction.label}
-          </button>
+        {(extraAction || (extraActions && extraActions.length > 0)) && (
+          <div className="flex shrink-0 gap-2">
+            {extraAction && (
+              <AsyncToolbarButton action={extraAction} className="bg-teal-600 hover:bg-teal-700" />
+            )}
+            {extraActions?.map((action) => (
+              <AsyncToolbarButton action={action} className="bg-slate-800 hover:bg-slate-900" key={action.label} />
+            ))}
+          </div>
         )}
-        {extraActions?.map((action) => (
-          <button
-            className="h-10 rounded-lg bg-slate-800 px-4 text-sm font-bold text-white transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={action.disabled}
-            key={action.label}
-            onClick={action.onClick}
-            type="button"
-          >
-            {action.label}
-          </button>
-        ))}
+        {onDelete && (
+          <div className="ml-auto shrink-0">
+            <DeleteActionButton disabled={selectedCount === 0} onClick={onDelete} selectedCount={selectedCount} />
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function SortIcon({ active, direction }: { active: boolean; direction: SortDirection }) {
+function AsyncToolbarButton({ action, className }: {
+  action: { disabled?: boolean; label: string; onClick: () => void | Promise<void> };
+  className: string;
+}) {
+  const { isPending, run } = useAsyncAction();
   return (
-    <svg
-      aria-hidden="true"
-      className={`size-3 ${active ? "opacity-100" : "opacity-40"}`}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2.2"
-      viewBox="0 0 24 24"
+    <button
+      className={`h-10 rounded-lg px-4 text-sm font-bold text-white transition-colors disabled:cursor-not-allowed disabled:bg-slate-300 ${className}`}
+      disabled={action.disabled || isPending}
+      onClick={() => void run(action.onClick)}
+      type="button"
     >
-      <path d={direction === "asc" ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"} />
-    </svg>
+      <SavingButtonContent idleText={action.label} isSaving={isPending} savingText="처리 중..." />
+    </button>
   );
 }
 

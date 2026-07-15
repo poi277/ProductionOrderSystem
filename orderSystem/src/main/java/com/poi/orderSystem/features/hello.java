@@ -11,6 +11,6 @@ public class hello {
 
 	@GetMapping("/hello")
 	public ResponseEntity<ApiResponse> helloRes() {
-		return ResponseEntity.ok(new ApiResponse(true, "hello"));
+		return ResponseEntity.ok(new ApiResponse(true, "정상적으로 응답했습니다."));
 	}
 }

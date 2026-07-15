@@ -17,6 +17,7 @@ public class OrderPurchaseResponse {
 	private final Integer price;
 	private final String dueDate;
 	private final ProcessStatus status;
+	private final String statusLabel;
 	private final String note;
 	private final LocalDateTime createdTime;
 	private final Long productionDbId;
@@ -33,6 +34,7 @@ public class OrderPurchaseResponse {
 		this.price = purchase.getPrice();
 		this.dueDate = purchase.getDueDate();
 		this.status = purchase.getStatus();
+		this.statusLabel = purchase.getStatus() == null ? null : purchase.getStatus().getLabel();
 		this.note = purchase.getNote();
 		this.createdTime = purchase.getCreatedTime();
 		var production = purchase.getProduction();

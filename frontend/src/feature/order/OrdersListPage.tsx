@@ -6,8 +6,13 @@ import { formatKoreanDateTimeWithoutYear, formatKoreanDateWithoutYear } from "..
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
+import { compareNumberOrText, matchesSearch, sortByConditions, updateSortConditions } from "../common/listDataUtils";
+import { useRowSelection } from "../common/useRowSelection";
 import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
 import type { Order } from "./OrdersTypes";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import { useApiMutationRevision } from "../../../util/apiMutationStore";
 
 type SortKey =
   | "orderNo"
@@ -26,6 +31,7 @@ type OrderPurchaseResponse = {
   price: number | null;
   dueDate: string | null;
   status: string | null;
+  statusLabel: string | null;
   note: string | null;
   createdTime: string | null;
   productionDbId: number | null;
@@ -45,11 +51,10 @@ type UpdatedOrderEvent = {
   order: OrderPurchaseResponse;
 };
 
-const orderListApiUrl = process.env.NEXT_PUBLIC_ORDER_LIST_API_URL ?? "http://localhost:8080/order";
-
 const text = {
   customer: "\uace0\uac1d\uc0ac",
   createdAt: "\uc0dd\uc131\uc2dc\uac04",
+  currentProcess: "\ud604\uc7ac\uacf5\uc815",
   dueDate: "\ub0a9\uae30\uc77c",
   empty: "\ub4f1\ub85d\ub41c\u0020\ubc1c\uc8fc\uc11c\uac00\u0020\uc5c6\uc2b5\ub2c8\ub2e4\u002e",
   loadError: "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\uc744\u0020\uc870\ud68c\ud558\uc9c0\u0020\ubabb\ud588\uc2b5\ub2c8\ub2e4\u002e",
@@ -83,11 +88,13 @@ const orderColumns: DataListColumn<Order>[] = [
   { align: "center", header: "\ubc1c\uc8fc\uc218\ub7c9", key: "quantity", render: (row) => row.quantity },
   { align: "center", header: text.dueDate, key: "dueDate", render: (row) => row.dueDate },
   { header: text.memo, key: "memo", render: (row) => row.memo },
+  { align: "center", header: text.currentProcess, key: "status", render: (row) => row.status },
 ];
 
 export default function OrdersListPage() {
+  const mutationRevision = useApiMutationRevision();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [checkedOrderIds, setCheckedOrderIds] = useState<number[]>([]);
+  const { selectedIds: checkedOrderIds, setSelectedIds: setCheckedOrderIds, toggleOne: toggleOrderCheckbox } = useRowSelection<number>();
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
   const [searchField, setSearchField] = useState<SortKey>("orderNo");
   const [searchText, setSearchText] = useState("");
@@ -108,10 +115,10 @@ export default function OrdersListPage() {
       setErrorMessage("");
 
       try {
-        const response = await fetch(orderListApiUrl, { cache: "no-store" });
+        const response = await apiClient(orderEndpoints.root, { cache: "no-store" });
 
         if (!response.ok) {
-          throw new Error(text.loadError);
+          throw new Error(await getApiErrorMessage(response, text.loadError));
         }
 
         const result = (await response.json()) as ApiResponse<OrderPurchaseResponse[]>;
@@ -122,7 +129,6 @@ export default function OrdersListPage() {
       } catch (error) {
         if (!ignore) {
           setErrorMessage(error instanceof Error ? error.message : text.unknownLoadError);
-          setOrders([]);
         }
       } finally {
         if (!ignore) {
@@ -136,7 +142,7 @@ export default function OrdersListPage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [mutationRevision]);
 
   useEffect(() => {
     const handleCreated = (event: Event) => {
@@ -186,42 +192,13 @@ export default function OrdersListPage() {
     new Set(orders.map((order) => String(getSearchValue(order, searchField)))),
   );
   const filteredOrders = orders.filter((order) =>
-    String(getSearchValue(order, searchField)).toLowerCase().includes(searchText.toLowerCase()),
+    matchesSearch(getSearchValue(order, searchField), searchText),
   );
 
-  const sortedOrders = [...filteredOrders].sort((a, b) => {
-    for (const condition of sortConditions) {
-      const aValue = getSortValue(a, condition.key);
-      const bValue = getSortValue(b, condition.key);
-      const compareResult =
-        typeof aValue === "number" && typeof bValue === "number"
-          ? aValue - bValue
-          : String(aValue).localeCompare(String(bValue), "ko");
-
-      if (compareResult !== 0) {
-        return condition.direction === "asc" ? compareResult : -compareResult;
-      }
-    }
-
-    return 0;
-  });
+  const sortedOrders = sortByConditions(filteredOrders, sortConditions, getSortValue, compareNumberOrText);
 
   const handleSort = (key: SortKey) => {
-    setSortConditions((current) => {
-      const existing = current.find((condition) => condition.key === key);
-
-      if (!existing) {
-        return [...current, { key, direction: "asc" }];
-      }
-
-      if (existing.direction === "asc") {
-        return current.map((condition) =>
-          condition.key === key ? { ...condition, direction: "desc" } : condition,
-        );
-      }
-
-      return current.filter((condition) => condition.key !== key);
-    });
+    setSortConditions((current) => updateSortConditions(current, key));
   };
 
   const handleSelectOrder = (order: Order) => {
@@ -229,11 +206,7 @@ export default function OrdersListPage() {
   };
 
   const handleToggleOrderCheckbox = (order: Order) => {
-    setCheckedOrderIds((current) =>
-      current.includes(order.id)
-        ? current.filter((orderId) => orderId !== order.id)
-        : [...current, order.id],
-    );
+    toggleOrderCheckbox(order.id);
   };
 
   const handleDeleteSelectedOrders = async () => {
@@ -245,14 +218,15 @@ export default function OrdersListPage() {
 
     const responses = await Promise.all(
       selectedOrders.map((order) =>
-        fetch(`${orderListApiUrl}/${order.purchaseDbId}`, {
+        apiClient(orderEndpoints.detail(order.purchaseDbId ?? ""), {
           method: "DELETE",
         }),
       ),
     );
 
-    if (responses.some((response) => !response.ok)) {
-      window.alert("선택한 발주서 삭제에 실패했습니다.");
+    const failedResponse = responses.find((response) => !response.ok);
+    if (failedResponse) {
+      window.alert(await getApiErrorMessage(failedResponse, "선택한 발주서 삭제에 실패했습니다."));
       return;
     }
 
@@ -284,14 +258,18 @@ export default function OrdersListPage() {
           />
 
           <DataListTable
+            categoryKey="order"
+            onColumnSort={(key) => handleSort(key as SortKey)}
+            sortableColumnKeys={sortButtons.map((option) => option.key)}
+            sortConditions={sortConditions}
             checkedRowIds={checkedOrderIds}
             columns={orderColumns}
-            emptyMessage={isLoading ? text.loading : errorMessage || text.empty}
+            emptyMessage={isLoading && orders.length === 0 ? text.loading : errorMessage || text.empty}
             getRowId={(row) => row.id}
             onBlankClick={closeOrderSidebar}
             onCheckboxChange={handleToggleOrderCheckbox}
             onRowClick={handleSelectOrder}
-            rows={isLoading || errorMessage ? [] : sortedOrders}
+            rows={sortedOrders}
             selectedRowId={selectedOrder?.id ?? null}
           />
         </div>
@@ -319,7 +297,7 @@ function toOrderRow(order: OrderPurchaseResponse, index: number): Order {
     unitPrice: formatNumber(order.price),
     totalAmount: formatNumber(calculateTotalAmount(order.quantity, order.price)),
     dueDate: formatDate(order.dueDate),
-    status: formatStatus(order.status),
+    status: order.statusLabel ?? order.status ?? "-",
     memo: order.note ?? "-",
     createdAt: formatDateTime(order.createdTime),
     productQr: order.productQr ?? undefined,
@@ -346,24 +324,6 @@ function calculateTotalAmount(quantity: number | null, unitPrice: number | null)
 
 function formatNumber(value: number | null) {
   return value == null ? "-" : value.toLocaleString("ko-KR");
-}
-
-function formatStatus(value: string | null) {
-  switch (value) {
-    case "WAITING":
-      return "\uc9c0\uc2dc\ub300\uae30";
-    case "IN_PROGRESS":
-    case "PRODUCING":
-      return "\uc0dd\uc0b0\uc911";
-    case "COMPLETED":
-      return "\uc644\ub8cc";
-    case "SHIPPED":
-      return "\ucd9c\ud558\uc644\ub8cc";
-    case "CANCELED":
-      return "\ucde8\uc18c";
-    default:
-      return value ?? "-";
-  }
 }
 
 function getSortValue(order: Order, key: SortKey) {

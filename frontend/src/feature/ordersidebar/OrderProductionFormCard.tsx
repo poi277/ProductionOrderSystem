@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { NumberFieldRow, SelectFieldRow, TextFieldRow } from "./DetailFieldRows";
 
 export type OrderProductionForm = {
   completedQuantity: string;
@@ -67,111 +68,34 @@ export default function OrderProductionFormCard({
             />
           </PreviewFormRow>
         ) : (
-          <FormRow label={text.orderNo}>
-            <TextInput
-              disabled={disabled}
-              onChange={(value) => onChange?.("orderNo", value)}
-              required
-              value={form.orderNo}
-            />
-          </FormRow>
+          <TextFieldRow disabled={disabled} label={text.orderNo} onChange={(value) => onChange?.("orderNo", value)} required value={form.orderNo} />
         )}
         {compactCreate ? (
           <>
-            <FormRow label={text.productCodePrefix}>
-              <TextInput
-                disabled={disabled}
-                onChange={(value) => onChange?.("productCodePrefix", value)}
-                required
-                value={form.productCodePrefix}
-              />
-            </FormRow>
-            <FormRow label={text.lotNo}>
-              <TextInput disabled={disabled} onChange={(value) => onChange?.("lotNo", value)} required value={form.lotNo} />
-            </FormRow>
-            <FormRow label={text.productionQuantity}>
-              <TextInput
-                disabled={disabled}
-                min={1}
-                onChange={(value) => onChange?.("instructionQuantity", value)}
-                required
-                type="number"
-                value={form.instructionQuantity}
-              />
-            </FormRow>
+            <TextFieldRow disabled={disabled} label={text.productCodePrefix} onChange={(value) => onChange?.("productCodePrefix", value)} required value={form.productCodePrefix} />
+            <TextFieldRow disabled={disabled} label={text.lotNo} onChange={(value) => onChange?.("lotNo", value)} required value={form.lotNo} />
+            <NumberFieldRow disabled={disabled} label={text.productionQuantity} min={1} onChange={(value) => onChange?.("instructionQuantity", value)} required value={form.instructionQuantity} />
           </>
         ) : (
           <>
-        <FormRow label={text.customer}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("customer", value)} value={form.customer} />
-        </FormRow>
-        <FormRow label={text.product}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("product", value)}
-            required
-            value={form.product}
-          />
-        </FormRow>
-        <FormRow label={text.instructionQuantity}>
-          <TextInput
-            disabled={disabled}
-            min={1}
-            onChange={(value) => onChange?.("instructionQuantity", value)}
-            required
-            type="number"
-            value={form.instructionQuantity}
-          />
-        </FormRow>
-        <FormRow label={text.completedQuantity}>
-          <TextInput
-            disabled={disabled}
-            min={0}
-            onChange={(value) => onChange?.("completedQuantity", value)}
-            type="number"
-            value={form.completedQuantity}
-          />
-        </FormRow>
-        <FormRow label={text.shippedQuantity}>
-          <TextInput
-            disabled={disabled}
-            min={0}
-            onChange={(value) => onChange?.("shippedQuantity", value)}
-            type="number"
-            value={form.shippedQuantity}
-          />
-        </FormRow>
-        <FormRow label={text.dueDate}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("dueDate", value)} type="date" value={form.dueDate} />
-        </FormRow>
-        <FormRow label={text.status}>
-          <select
-            className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-            disabled={disabled}
-            onChange={(event) => onChange?.("status", event.target.value)}
-            value={form.status}
-          >
+        <TextFieldRow disabled={disabled} label={text.customer} onChange={(value) => onChange?.("customer", value)} value={form.customer} />
+        <TextFieldRow disabled={disabled} label={text.product} onChange={(value) => onChange?.("product", value)} required value={form.product} />
+        <NumberFieldRow disabled={disabled} label={text.instructionQuantity} min={1} onChange={(value) => onChange?.("instructionQuantity", value)} required value={form.instructionQuantity} />
+        <NumberFieldRow disabled={disabled} label={text.completedQuantity} min={0} onChange={(value) => onChange?.("completedQuantity", value)} value={form.completedQuantity} />
+        <NumberFieldRow disabled={disabled} label={text.shippedQuantity} min={0} onChange={(value) => onChange?.("shippedQuantity", value)} value={form.shippedQuantity} />
+        <TextFieldRow disabled={disabled} label={text.dueDate} onChange={(value) => onChange?.("dueDate", value)} type="date" value={form.dueDate} />
+        <SelectFieldRow disabled={disabled} label={text.status} onChange={(value) => onChange?.("status", value)} value={form.status}>
             <option value="지시대기">지시대기</option>
             <option value="생산중">생산중</option>
             <option value="완료">완료</option>
             <option value="출하완료">출하완료</option>
             <option value="마감">마감</option>
             <option value="취소">취소</option>
-          </select>
-        </FormRow>
+        </SelectFieldRow>
           </>
         )}
       </div>
     </section>
-  );
-}
-
-function FormRow({ label, children }: { children: ReactNode; label: string }) {
-  return (
-    <label className="grid grid-cols-[84px_minmax(0,1fr)] items-start gap-2 text-xs">
-      <span className="pt-2 font-extrabold text-slate-900">{label}</span>
-      <div className="min-w-0">{children}</div>
-    </label>
   );
 }
 
@@ -245,33 +169,5 @@ function OrderNoPreviewInput({
         </div>
       )}
     </div>
-  );
-}
-
-function TextInput({
-  disabled,
-  min,
-  onChange,
-  required,
-  type = "text",
-  value,
-}: {
-  disabled: boolean;
-  min?: number;
-  onChange: (value: string) => void;
-  required?: boolean;
-  type?: string;
-  value: string;
-}) {
-  return (
-    <input
-      className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-      disabled={disabled}
-      min={min}
-      onChange={(event) => onChange(event.target.value)}
-      required={required}
-      type={type}
-      value={value}
-    />
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getCategoryActiveClass } from "../common/categoryActiveStyles";
 import type { CategoryActiveKey } from "../common/categoryActiveStyles";
+import { useAuth } from "../login/AuthContext";
 
 type IconName =
   | "dashboard"
@@ -18,7 +19,8 @@ type IconName =
   | "qr"
   | "settings"
   | "user"
-  | "lock";
+  | "lock"
+  | "logout";
 
 type Menu = {
   activeKey: CategoryActiveKey;
@@ -33,15 +35,19 @@ const mainMenus: Menu[] = [
   { activeKey: "production", label: "생산지시", href: "/production-orders", icon: "production" },
   { activeKey: "processOverview", label: "공정현황", href: "/product-processes", icon: "process" },
   { activeKey: "process", label: "공정이력", href: "/process-histories", icon: "history" },
-  { activeKey: "process", label: "납품/출하", href: "/shipments", icon: "shipment" },
+  { activeKey: "shipment", label: "납품/출하", href: "/shipments", icon: "shipment" },
   { activeKey: "label", label: "라벨출력", href: "/labels", icon: "label" },
   { activeKey: "qr", label: "QR조회", href: "/qr-search", icon: "qr" },
-  { activeKey: "history", label: "제품이력", href: "/histories", icon: "history" },
   { activeKey: "scan", label: "스캔", href: "/scan", icon: "scan" },
 ];
 
+const historyMenus: Menu[] = [
+  { activeKey: "history", label: "발주이력", href: "/order-purchase-histories", icon: "history" },
+  { activeKey: "history", label: "제품이력", href: "/histories", icon: "history" },
+];
+
 const settingMenus: Menu[] = [
-  { activeKey: "settings", label: "사용자 관리", href: "/settings/users", icon: "user" },
+  { activeKey: "settings", label: "내 정보", href: "/settings/users", icon: "user" },
   { activeKey: "settings", label: "권한 설정", href: "/settings/permissions", icon: "lock" },
 ];
 
@@ -49,10 +55,12 @@ const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, username, role, loading: authLoading, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(pathname.startsWith("/settings"));
-  const isSettingsActive = pathname.startsWith("/settings");
-  const shouldShowSettings = isSettingsActive || isSettingsOpen;
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const isLoggedIn = user !== null;
+  const avatarLabel = role === "ADMIN" ? "관" : role === "EMPLOYEE" ? "직" : role === "USER" ? "일" : "손";
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => {
@@ -62,6 +70,22 @@ export default function Sidebar() {
 
     return () => cancelAnimationFrame(frameId);
   }, []);
+
+  const handleAuthClick = async () => {
+    if (!isLoggedIn) {
+      router.push("/login");
+      return;
+    }
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+      router.replace("/dashboard");
+    }
+  };
 
   const toggleSidebar = () => {
     setIsCollapsed((current) => {
@@ -74,7 +98,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`relative w-full shrink-0 border-b border-slate-200 bg-[#f6f7f9] px-4 py-4 text-slate-950 shadow-sm transition-all duration-300 md:min-h-screen md:border-b-0 md:border-r md:px-5 md:py-5 ${
+      className={`relative flex w-full shrink-0 flex-col border-b border-slate-200 bg-[#f6f7f9] px-4 py-4 text-slate-950 shadow-sm transition-all duration-300 md:min-h-screen md:border-b-0 md:border-r md:px-5 md:py-5 ${
         isCollapsed ? "md:w-[76px]" : "md:w-[220px]"
       }`}
       data-layout-sidebar
@@ -105,7 +129,7 @@ export default function Sidebar() {
         }`}
       >
         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-bold text-rose-700">
-          관
+          {avatarLabel}
         </div>
         <div
           className={`min-w-0 overflow-hidden transition-all duration-300 ${
@@ -114,9 +138,9 @@ export default function Sidebar() {
           data-sidebar-collapsed-hide
         >
           <p className="truncate whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-slate-400">
-            Production Manager
+            {role ?? "GUEST"}
           </p>
-          <h1 className="mt-1 truncate text-base font-bold">QR 이력관리</h1>
+          <h1 className="mt-1 truncate text-base font-bold">{username ?? "비로그인"}</h1>
         </div>
       </div>
 
@@ -130,7 +154,7 @@ export default function Sidebar() {
             }`}
             data-sidebar-collapsed-hide
           >
-            MAIN
+            메인
           </h2>
           <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-1">
             {mainMenus.map((menu) => {
@@ -168,73 +192,119 @@ export default function Sidebar() {
 
         <div className="my-4 h-px bg-slate-300/70" />
 
-        <section className="relative">
-          <button
-            className={`flex h-10 items-center overflow-hidden rounded-lg text-sm font-semibold transition-colors duration-300 ${
-              isCollapsed ? "md:w-11 md:px-3" : "w-full justify-between px-3"
-            } ${
-              isSettingsActive
-                ? getCategoryActiveClass("settings")
-                : "text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+        <section>
+          <h2
+            className={`mb-2 h-3 overflow-hidden whitespace-nowrap text-[10px] font-bold tracking-wider text-slate-400 transition-opacity ${
+              isCollapsed ? "md:opacity-0" : "opacity-100"
             }`}
-            data-sidebar-collapsed-item
-            onClick={() => setIsSettingsOpen((value) => !value)}
-            title="환경설정"
-            type="button"
+            data-sidebar-collapsed-hide
           >
-            <span className="flex items-center">
-              <SidebarIcon name="settings" />
-              <span
-                className={`ml-3 overflow-hidden whitespace-nowrap transition-opacity ${
-                  isCollapsed ? "md:w-0 md:opacity-0" : "opacity-100"
-                }`}
-                data-sidebar-collapsed-hide
-              >
-                환경설정
-              </span>
-            </span>
-            <span
-              className={`overflow-hidden whitespace-nowrap text-xs text-slate-400 transition-opacity duration-300 ${
-                isCollapsed ? "md:w-0 md:opacity-0" : "opacity-100"
-              }`}
-              data-sidebar-collapsed-hide
-            >
-              {shouldShowSettings ? "⌃" : "⌄"}
-            </span>
-          </button>
+            이력
+          </h2>
+          <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-1">
+            {historyMenus.map((menu) => {
+              const isActive = pathname === menu.href;
 
-          {shouldShowSettings && (
-            <ul
-              className={`mt-1 grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-1 ${
-                isCollapsed
-                  ? "md:absolute md:left-[56px] md:top-0 md:z-30 md:w-40 md:rounded-lg md:bg-white md:p-2 md:shadow-xl"
-                  : "md:border-l md:border-slate-100 md:pl-4"
-              }`}
-            >
-              {settingMenus.map((menu) => {
-                const isActive = pathname === menu.href;
-
-                return (
-                  <li key={menu.href}>
-                    <Link
-                      className={`flex h-9 items-center rounded-lg px-3 text-sm font-semibold transition-colors ${
-                        isActive
-                          ? getCategoryActiveClass(menu.activeKey)
-                          : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              return (
+                <li key={menu.href}>
+                  <Link
+                    className={`flex h-10 items-center rounded-lg text-sm font-semibold transition-colors duration-300 ${
+                      isCollapsed ? "md:w-11 md:px-3" : "w-full px-3"
+                    } ${
+                      isActive
+                        ? getCategoryActiveClass(menu.activeKey)
+                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+                    }`}
+                    data-sidebar-collapsed-item
+                    href={menu.href}
+                    title={menu.label}
+                  >
+                    <SidebarIcon name={menu.icon} />
+                    <span
+                      className={`ml-3 overflow-hidden whitespace-nowrap transition-opacity ${
+                        isCollapsed ? "md:w-0 md:opacity-0" : "opacity-100"
                       }`}
-                      href={menu.href}
-                      title={menu.label}
+                      data-sidebar-collapsed-hide
                     >
-                      <SidebarIcon name={menu.icon} />
-                      <span className="ml-3">{menu.label}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                      {menu.label}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </section>
+
+        {role === "ADMIN" && <div className="my-4 h-px bg-slate-300/70" />}
+
+        {role === "ADMIN" && <section>
+          <h2
+            className={`mb-2 h-3 overflow-hidden whitespace-nowrap text-[10px] font-bold tracking-wider text-slate-400 transition-opacity ${
+              isCollapsed ? "md:opacity-0" : "opacity-100"
+            }`}
+            data-sidebar-collapsed-hide
+          >
+            환경설정
+          </h2>
+          <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-1">
+            {settingMenus.map((menu) => {
+              const isActive = pathname === menu.href;
+
+              return (
+                <li key={menu.href}>
+                  <Link
+                    className={`flex h-10 items-center rounded-lg text-sm font-semibold transition-colors duration-300 ${
+                      isCollapsed ? "md:w-11 md:px-3" : "w-full px-3"
+                    } ${
+                      isActive
+                        ? getCategoryActiveClass(menu.activeKey)
+                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+                    }`}
+                    data-sidebar-collapsed-item
+                    href={menu.href}
+                    title={menu.label}
+                  >
+                    <SidebarIcon name={menu.icon} />
+                    <span
+                      className={`ml-3 overflow-hidden whitespace-nowrap transition-opacity ${
+                        isCollapsed ? "md:w-0 md:opacity-0" : "opacity-100"
+                      }`}
+                      data-sidebar-collapsed-hide
+                    >
+                      {menu.label}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>}
       </nav>
+
+      <div className="mt-4 border-t border-slate-300/70 pt-4 md:mt-auto">
+        <button
+          className={`flex h-10 items-center rounded-lg text-sm font-semibold transition-colors duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
+            isLoggedIn ? "text-red-500 hover:bg-red-50 hover:text-red-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+          } ${
+            isCollapsed ? "md:w-11 md:px-3" : "w-full px-3"
+          }`}
+          data-sidebar-collapsed-item
+          disabled={authLoading || isLoggingOut}
+          onClick={handleAuthClick}
+          title={isLoggedIn ? "로그아웃" : "로그인"}
+          type="button"
+        >
+          <SidebarIcon name={isLoggedIn ? "logout" : "lock"} />
+          <span
+            className={`ml-3 overflow-hidden whitespace-nowrap transition-opacity ${
+              isCollapsed ? "md:w-0 md:opacity-0" : "opacity-100"
+            }`}
+            data-sidebar-collapsed-hide
+          >
+            {isLoggingOut ? "로그아웃 중..." : isLoggedIn ? "로그아웃" : "로그인"}
+          </span>
+        </button>
+      </div>
     </aside>
   );
 }
@@ -255,6 +325,12 @@ function SidebarIcon({ name }: { name: IconName }) {
     settings: <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4" />,
     user: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0" />,
     lock: <path d="M6 10h12v11H6zM8 10V8a4 4 0 0 1 8 0v2M12 15v2" />,
+    logout: (
+      <>
+        <path d="M14 4.5 7 3v18l7-1.5V4.5Z" />
+        <path d="M14 6h4a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4M10.5 12h.01" />
+      </>
+    ),
   };
 
   return (

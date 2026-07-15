@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ReadonlyFieldRow, SelectFieldRow, TextFieldRow } from "./DetailFieldRows";
 
 export type OrderHistoryForm = {
   historyId: string;
@@ -51,54 +52,20 @@ export default function OrderHistoryFormCard({
 
       <div className="mt-3 flex flex-col gap-3">
         {form.historyId && (
-          <FormRow label={text.historyId}>
-            <TextInput disabled value={form.historyId} />
-          </FormRow>
+          <ReadonlyFieldRow label={text.historyId} value={form.historyId} />
         )}
-        <FormRow label={text.productionOrderNo}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productionOrderNo", value)}
-            value={form.productionOrderNo}
-          />
-        </FormRow>
-        <FormRow label={text.productQr}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productQr", value)}
-            required
-            value={form.productQr}
-          />
-        </FormRow>
-        <FormRow label={text.productName}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("productName", value)} value={form.productName} />
-        </FormRow>
-        <FormRow label={text.processName}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("processName", value)} value={form.processName} />
-        </FormRow>
-        <FormRow label={text.judgment}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("judgment", value)} value={form.judgment} />
-        </FormRow>
-        <FormRow label={text.defectType}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("defectType", value)} value={form.defectType} />
-        </FormRow>
-        <FormRow label={text.worker}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("worker", value)} value={form.worker} />
-        </FormRow>
-        <FormRow label={text.equipment}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("equipment", value)} value={form.equipment} />
-        </FormRow>
-        <FormRow label={text.status}>
-          <select
-            className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-            disabled={disabled}
-            onChange={(event) => onChange?.("status", event.target.value)}
-            value={form.status}
-          >
+        <TextFieldRow disabled={disabled} label={text.productionOrderNo} onChange={(value) => onChange?.("productionOrderNo", value)} value={form.productionOrderNo} />
+        <TextFieldRow disabled={disabled} label={text.productQr} onChange={(value) => onChange?.("productQr", value)} required value={form.productQr} />
+        <TextFieldRow disabled={disabled} label={text.productName} onChange={(value) => onChange?.("productName", value)} value={form.productName} />
+        <TextFieldRow disabled={disabled} label={text.processName} onChange={(value) => onChange?.("processName", value)} value={form.processName} />
+        <TextFieldRow disabled={disabled} label={text.judgment} onChange={(value) => onChange?.("judgment", value)} value={form.judgment} />
+        <TextFieldRow disabled={disabled} label={text.defectType} onChange={(value) => onChange?.("defectType", value)} value={form.defectType} />
+        <TextFieldRow disabled={disabled} label={text.worker} onChange={(value) => onChange?.("worker", value)} value={form.worker} />
+        <TextFieldRow disabled={disabled} label={text.equipment} onChange={(value) => onChange?.("equipment", value)} value={form.equipment} />
+        <SelectFieldRow disabled={disabled} label={text.status} onChange={(value) => onChange?.("status", value)} value={form.status}>
             <option value="정상">정상</option>
             <option value="불량">불량</option>
-          </select>
-        </FormRow>
+        </SelectFieldRow>
         <FormRow label={text.memo}>
           <textarea
             className="min-h-20 w-full resize-none rounded-md border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
@@ -118,30 +85,5 @@ function FormRow({ label, children }: { children: ReactNode; label: string }) {
       <span className="pt-2 font-extrabold text-slate-900">{label}</span>
       <div className="min-w-0">{children}</div>
     </label>
-  );
-}
-
-function TextInput({
-  disabled = false,
-  onChange,
-  required,
-  type = "text",
-  value,
-}: {
-  disabled?: boolean;
-  onChange?: (value: string) => void;
-  required?: boolean;
-  type?: string;
-  value: string;
-}) {
-  return (
-    <input
-      className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-      disabled={disabled}
-      onChange={(event) => onChange?.(event.target.value)}
-      required={required}
-      type={type}
-      value={value}
-    />
   );
 }

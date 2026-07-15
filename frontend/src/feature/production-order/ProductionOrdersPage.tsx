@@ -6,7 +6,12 @@ import { formatKoreanDateTimeWithoutYear, formatKoreanDateWithoutYear } from "..
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
+import { compareNumberOrText, matchesSearch, sortByConditions, updateSortConditions } from "../common/listDataUtils";
+import { useRowSelection } from "../common/useRowSelection";
 import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import { useApiMutationRevision } from "../../../util/apiMutationStore";
 import type { OrderProductionForm } from "../ordersidebar/OrderProductionFormCard";
 import type { Order, PurchaseOption } from "../order/OrdersTypes";
 
@@ -45,6 +50,7 @@ type ProductionOrderResponse = {
   productName: string | null;
   price: number | null;
   status: string | null;
+  statusLabel: string | null;
   note: string | null;
   purchaseCreatedTime: string | null;
   lot: string | null;
@@ -64,8 +70,6 @@ type ApiResponse<T> = {
   message: string;
   data: T;
 };
-
-const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
 type SortKey =
   | "orderNo"
@@ -159,10 +163,11 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
 ];
 
 export default function ProductionOrdersPage() {
+  const mutationRevision = useApiMutationRevision();
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
   const [loadError, setLoadError] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [checkedOrderIds, setCheckedOrderIds] = useState<number[]>([]);
+  const { selectedIds: checkedOrderIds, setSelectedIds: setCheckedOrderIds, toggleOne: toggleOrderCheckbox } = useRowSelection<number>();
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
   const [searchField, setSearchField] = useState<SortKey>("orderNo");
   const [searchText, setSearchText] = useState("");
@@ -175,10 +180,10 @@ export default function ProductionOrdersPage() {
   useEffect(() => {
     const loadOrders = async () => {
       try {
-        const response = await fetch(`${orderApiBaseUrl}/productions`);
+        const response = await apiClient(orderEndpoints.productions);
 
         if (!response.ok) {
-          setLoadError("생산지시 목록을 불러오지 못했습니다.");
+          setLoadError(await getApiErrorMessage(response, "생산지시 목록을 불러오지 못했습니다."));
           setOrders([]);
           return;
         }
@@ -196,7 +201,7 @@ export default function ProductionOrdersPage() {
 
     const loadPurchaseOptions = async () => {
       try {
-        const response = await fetch(orderApiBaseUrl, { cache: "no-store" });
+        const response = await apiClient(orderEndpoints.root, { cache: "no-store" });
         const result = (await response.json()) as ApiResponse<PurchaseOption[]>;
         setPurchaseOptions(response.ok ? result.data : []);
       } catch {
@@ -204,7 +209,7 @@ export default function ProductionOrdersPage() {
       }
     };
     void loadPurchaseOptions();
-  }, [setPurchaseOptions]);
+  }, [mutationRevision, setPurchaseOptions]);
 
   useEffect(() => {
     const handleCreate = (event: Event) => {
@@ -256,49 +261,16 @@ export default function ProductionOrdersPage() {
     new Set(orders.map((order) => String(getSearchValue(order, searchField)))),
   );
   const filteredOrders = orders.filter((order) =>
-    String(getSearchValue(order, searchField)).toLowerCase().includes(searchText.toLowerCase()),
+    matchesSearch(getSearchValue(order, searchField), searchText),
   );
-  const sortedOrders = [...filteredOrders].sort((a, b) => {
-    for (const condition of sortConditions) {
-      const aValue = getSortValue(a, condition.key);
-      const bValue = getSortValue(b, condition.key);
-      const compareResult =
-        typeof aValue === "number" && typeof bValue === "number"
-          ? aValue - bValue
-          : String(aValue).localeCompare(String(bValue), "ko");
-
-      if (compareResult !== 0) {
-        return condition.direction === "asc" ? compareResult : -compareResult;
-      }
-    }
-
-    return 0;
-  });
+  const sortedOrders = sortByConditions(filteredOrders, sortConditions, getSortValue, compareNumberOrText);
 
   const handleSort = (key: SortKey) => {
-    setSortConditions((current) => {
-      const existing = current.find((condition) => condition.key === key);
-
-      if (!existing) {
-        return [...current, { key, direction: "asc" }];
-      }
-
-      if (existing.direction === "asc") {
-        return current.map((condition) =>
-          condition.key === key ? { ...condition, direction: "desc" } : condition,
-        );
-      }
-
-      return current.filter((condition) => condition.key !== key);
-    });
+    setSortConditions((current) => updateSortConditions(current, key));
   };
 
   const handleToggleOrderCheckbox = (order: ProductionOrder) => {
-    setCheckedOrderIds((current) =>
-      current.includes(order.id)
-        ? current.filter((orderId) => orderId !== order.id)
-        : [...current, order.id],
-    );
+    toggleOrderCheckbox(order.id);
   };
 
   const handleSelectOrder = (order: ProductionOrder) => {
@@ -315,14 +287,15 @@ export default function ProductionOrdersPage() {
 
     const responses = await Promise.all(
       selectedOrders.map((order) =>
-        fetch(`${orderApiBaseUrl}/productions/${order.productionDbId}`, {
+        apiClient(orderEndpoints.production(order.productionDbId ?? ""), {
           method: "DELETE",
         }),
       ),
     );
 
-    if (responses.some((response) => !response.ok)) {
-      window.alert("선택한 생산지시 삭제에 실패했습니다.");
+    const failedResponse = responses.find((response) => !response.ok);
+    if (failedResponse) {
+      window.alert(await getApiErrorMessage(failedResponse, "선택한 생산지시 삭제에 실패했습니다."));
       return;
     }
 
@@ -354,6 +327,10 @@ export default function ProductionOrdersPage() {
         />
 
         <DataListTable
+          categoryKey="production"
+          onColumnSort={(key) => handleSort(key as SortKey)}
+          sortableColumnKeys={sortButtons.map((option) => option.key)}
+          sortConditions={sortConditions}
           checkedRowIds={checkedOrderIds}
           columns={productionOrderColumns}
           getRowId={(row) => row.id}
@@ -458,7 +435,7 @@ function toProductionOrderRowFromApi(order: ProductionOrderResponse, index: numb
     processLabels: normalizeProcessLabels(order.processLabels),
     dueDate: formatKoreanDateWithoutYear(order.dueDate),
     createdTime: formatDateTime(order.createdTime),
-    currentProcess: getCurrentProcess(order.processCounts, order.processLabels),
+    currentProcess: getCurrentProcess(order.processCounts, order.processLabels, order.statusLabel),
     purchasePrice: order.price,
     purchaseStatus: order.status,
     purchaseNote: order.note,
@@ -467,9 +444,13 @@ function toProductionOrderRowFromApi(order: ProductionOrderResponse, index: numb
   };
 }
 
-function getCurrentProcess(processCounts: Record<string, number> | null, processLabels: Record<string, string> | null) {
+function getCurrentProcess(
+  processCounts: Record<string, number> | null,
+  processLabels: Record<string, string> | null,
+  statusLabel: string | null,
+) {
   const current = currentProcessSteps.find((step) => (processCounts?.[step.key] ?? 0) > 0);
-  return current ? processLabels?.[current.key] ?? current.label : "-";
+  return current ? processLabels?.[current.key] ?? current.label : statusLabel ?? "-";
 }
 
 function createInitialProcessCounts(instructionQuantity: number) {

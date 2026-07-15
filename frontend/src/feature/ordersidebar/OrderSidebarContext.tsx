@@ -13,23 +13,34 @@ type OrderSidebarContextValue = {
   openOrderDetailSidebar: (order: Order) => void;
   purchaseOptions: PurchaseOption[];
   setPurchaseOptions: (options: PurchaseOption[]) => void;
+  showSidebarNotification: (message: string, error?: boolean) => void;
 };
+
+export type SidebarNotification = { error: boolean; message: string } | null;
 
 const OrderSidebarContext = createContext<OrderSidebarContextValue | null>(null);
 
 export function OrderSidebarProvider({ children }: { children: ReactNode }) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [purchaseOptions, setPurchaseOptions] = useState<PurchaseOption[]>([]);
+  const [sidebarNotification, setSidebarNotification] = useState<SidebarNotification>(null);
   const isRightPanelOpen = true;
 
   const closeOrderSidebar = () => setSelectedOrder(null);
-  const clearOrderSidebarSelection = () => setSelectedOrder(null);
-  const openOrderDetailSidebar = (order: Order) => setSelectedOrder(order);
+  const clearOrderSidebarSelection = () => {
+    setSelectedOrder(null);
+    setSidebarNotification(null);
+  };
+  const openOrderDetailSidebar = (order: Order) => {
+    setSidebarNotification(null);
+    setSelectedOrder(order);
+  };
+  const showSidebarNotification = (message: string, error = false) => setSidebarNotification({ error, message });
 
   return (
-    <OrderSidebarContext.Provider value={{ selectedOrder, isRightPanelOpen, closeOrderSidebar, clearOrderSidebarSelection, openOrderDetailSidebar, purchaseOptions, setPurchaseOptions }}>
+    <OrderSidebarContext.Provider value={{ selectedOrder, isRightPanelOpen, closeOrderSidebar, clearOrderSidebarSelection, openOrderDetailSidebar, purchaseOptions, setPurchaseOptions, showSidebarNotification }}>
       <div className="flex min-w-0 flex-1 flex-col md:pr-[420px]">{children}</div>
-      <OrderRightPanel onClose={closeOrderSidebar} onResetSelection={clearOrderSidebarSelection} purchaseOptions={purchaseOptions} selectedOrder={selectedOrder} />
+      <OrderRightPanel notification={sidebarNotification} onClose={closeOrderSidebar} onResetSelection={clearOrderSidebarSelection} purchaseOptions={purchaseOptions} selectedOrder={selectedOrder} />
     </OrderSidebarContext.Provider>
   );
 }

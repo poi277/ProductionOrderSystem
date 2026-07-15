@@ -1,6 +1,8 @@
 import ListCheckbox from "./ListCheckbox";
-import { useMemo, useState } from "react";
+import { getCategoryActiveClass } from "./categoryActiveStyles";
+import type { CategoryActiveKey } from "./categoryActiveStyles";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 
 export type DataListColumn<TRow> = {
   align?: "left" | "center" | "right";
@@ -11,6 +13,7 @@ export type DataListColumn<TRow> = {
 };
 
 type DataListTableProps<TRow> = {
+  categoryKey?: CategoryActiveKey;
   columns: DataListColumn<TRow>[];
   rows: TRow[];
   checkboxHeader?: string;
@@ -21,9 +24,13 @@ type DataListTableProps<TRow> = {
   onBlankClick?: () => void;
   onCheckboxChange?: (row: TRow) => void;
   onRowClick?: (row: TRow) => void;
+  onColumnSort?: (key: string) => void;
+  sortableColumnKeys?: string[];
+  sortConditions?: Array<{ key: string; direction: "asc" | "desc" }>;
 };
 
 export default function DataListTable<TRow>({
+  categoryKey = "settings",
   columns,
   rows,
   checkboxHeader,
@@ -34,28 +41,23 @@ export default function DataListTable<TRow>({
   onBlankClick,
   onCheckboxChange,
   onRowClick,
+  onColumnSort,
+  sortableColumnKeys = [],
+  sortConditions = [],
 }: DataListTableProps<TRow>) {
-  const pageSize = 10;
-  const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-  const activePage = Math.min(currentPage, totalPages);
-  const pageRows = useMemo(
-    () => rows.slice((activePage - 1) * pageSize, activePage * pageSize),
-    [activePage, rows],
-  );
-  const pageRowIds = pageRows.map(getRowId);
-  const checkedIds = checkedRowIds ?? [];
-  const isAllPageRowsChecked = pageRowIds.length > 0 && pageRowIds.every((rowId) => checkedIds.includes(rowId));
+  const rowIds = rows.map(getRowId);
+  const checkedIdSet = useMemo(() => new Set(checkedRowIds ?? []), [checkedRowIds]);
+  const isAllRowsChecked = rowIds.length > 0 && rowIds.every((rowId) => checkedIdSet.has(rowId));
 
-  const handleToggleAllPageRows = () => {
+  const handleToggleAllRows = () => {
     if (!onCheckboxChange) {
       return;
     }
 
-    pageRows.forEach((row) => {
+    rows.forEach((row) => {
       const rowId = getRowId(row);
 
-      if (isAllPageRowsChecked || !checkedIds.includes(rowId)) {
+      if (isAllRowsChecked || !checkedIdSet.has(rowId)) {
         onCheckboxChange(row);
       }
     });
@@ -63,10 +65,10 @@ export default function DataListTable<TRow>({
 
   return (
     <section
-      className="min-h-0 min-w-0 flex-1 overflow-hidden border-t border-slate-200"
+      className="h-[calc(100dvh-245px)] min-h-48 min-w-0 shrink-0 overflow-hidden border-t border-slate-200"
       onClick={onBlankClick}
     >
-      <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden">
+      <div className="data-list-scrollbar h-full min-w-0 max-w-full overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]">
         <table className="w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col style={{ width: checkboxHeader ? "64px" : "40px" }} />
@@ -74,35 +76,45 @@ export default function DataListTable<TRow>({
               <col key={column.key} />
             ))}
           </colgroup>
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b border-slate-200 text-xs text-slate-500">
               <th className="px-3 py-3 text-center font-bold text-slate-900">
                 <div className="flex flex-col items-center justify-center gap-1">
                   {checkboxHeader && <span>{checkboxHeader}</span>}
-                  <ListCheckbox checked={isAllPageRowsChecked} onChange={handleToggleAllPageRows} />
+                  <ListCheckbox checked={isAllRowsChecked} onChange={handleToggleAllRows} />
                 </div>
               </th>
-              {columns.map((column, columnIndex) => {
-                const align = column.align ?? (columnIndex < 3 ? "left" : "center");
+              {columns.map((column) => {
+                const sortable = sortableColumnKeys.includes(column.key);
+                const condition = sortConditions.find((item) => item.key === column.key);
 
                 return (
                 <th
-                  className={`px-3 py-3 font-bold text-slate-900 ${
-                    align === "right" ? "text-right" : align === "center" ? "text-center" : ""
-                  }`}
+                  className="p-0 text-center font-bold text-slate-900"
                   key={column.key}
                 >
-                  {column.header}
+                  {sortable ? (
+                    <button
+                      className={`relative flex w-full items-center justify-center rounded-xl px-7 py-3 transition-colors ${
+                        condition ? getCategoryActiveClass(categoryKey) : "text-slate-900 hover:bg-slate-100"
+                      }`}
+                      onClick={() => onColumnSort?.(column.key)}
+                      type="button"
+                    >
+                      {column.header}
+                      <ColumnSortIcon direction={condition?.direction} />
+                    </button>
+                  ) : <div className="px-3 py-3">{column.header}</div>}
                 </th>
                 );
               })}
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((row) => {
+            {rows.map((row) => {
               const rowId = getRowId(row);
               const isActive = selectedRowId === rowId;
-              const isChecked = checkedRowIds ? checkedRowIds.includes(rowId) : isActive;
+              const isChecked = checkedIdSet.has(rowId);
 
               return (
                 <tr
@@ -112,9 +124,6 @@ export default function DataListTable<TRow>({
                   key={rowId}
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (onCheckboxChange) {
-                      onCheckboxChange(row);
-                    }
                     onRowClick?.(row);
                   }}
                 >
@@ -122,14 +131,7 @@ export default function DataListTable<TRow>({
                     <span className="inline-flex">
                       <ListCheckbox
                         checked={isChecked}
-                        onChange={() => {
-                          if (onCheckboxChange) {
-                            onCheckboxChange(row);
-                            return;
-                          }
-
-                          onRowClick?.(row);
-                        }}
+                        onChange={onCheckboxChange ? () => onCheckboxChange(row) : undefined}
                       />
                     </span>
                   </td>
@@ -155,35 +157,28 @@ export default function DataListTable<TRow>({
           </tbody>
         </table>
         {rows.length === 0 && emptyMessage && (
-          <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm font-bold text-slate-400">
+          <div className="flex min-h-48 items-center justify-center px-4 text-center text-sm font-bold text-slate-400">
             {emptyMessage}
-          </div>
-        )}
-        {totalPages > 1 && (
-          <div className="mt-auto flex items-center justify-center gap-1 py-4 text-sm font-semibold text-slate-500">
-            {Array.from({ length: totalPages }, (_, index) => {
-              const page = index + 1;
-              const isActive = activePage === page;
-
-              return (
-                <button
-                  className={`flex size-8 items-center justify-center rounded-full transition-colors ${
-                    isActive ? "bg-slate-950 text-white" : "hover:bg-slate-100 hover:text-slate-950"
-                  }`}
-                  key={page}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setCurrentPage(page);
-                  }}
-                  type="button"
-                >
-                  {page}
-                </button>
-              );
-            })}
           </div>
         )}
       </div>
     </section>
+  );
+}
+
+function ColumnSortIcon({ direction }: { direction?: "asc" | "desc" }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={`absolute right-2 size-4 transition-opacity ${direction ? "opacity-100" : "opacity-35"}`}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.2"
+      viewBox="0 0 24 24"
+    >
+      <path d={direction === "desc" ? "m6 9 6 6 6-6" : "m6 15 6-6 6 6"} />
+    </svg>
   );
 }

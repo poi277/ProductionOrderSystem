@@ -24,7 +24,7 @@ public class OrderProductController {
 	@DeleteMapping("/product-processes/{productQr}")
 	public ResponseEntity<ApiResponse> cancelProductProcess(@PathVariable("productQr") String productQr) {
 		orderProductService.cancelProduct(productQr);
-		return ResponseEntity.ok().body(new ApiResponse(true, "product canceled"));
+		return ResponseEntity.ok().body(new ApiResponse(true, "제품을 삭제했습니다."));
 	}
 
 	@PutMapping("/product-processes/{productQr}")
@@ -32,7 +32,7 @@ public class OrderProductController {
 			@PathVariable("productQr") String productQr,
 			@RequestBody OrderProductProcessRequest request
 	) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "product process updated", orderProductService.updateProductProcess(productQr, request)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "제품 공정을 수정했습니다.", orderProductService.updateProductProcess(productQr, request)));
 	}
 
 	@PutMapping("/product-processes/by-production/{purchaseId}")
@@ -40,29 +40,29 @@ public class OrderProductController {
 			@PathVariable("purchaseId") String purchaseId,
 			@RequestBody OrderProductProcessRequest request
 	) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "production product processes updated",
+		return ResponseEntity.ok().body(new ApiResponse(true, "생산 제품 공정을 수정했습니다.",
 				orderProductService.updateProductProcessesByProduction(purchaseId, request)));
 	}
 
 	@GetMapping("/shipments")
 	public ResponseEntity<ApiResponse> getShipments() {
-		return ResponseEntity.ok().body(new ApiResponse(true, "shipments loaded", orderProductService.findShipments()));
+		return ResponseEntity.ok().body(new ApiResponse(true, "납품/출하 목록을 조회했습니다.", orderProductService.findShipments()));
 	}
 
 	@DeleteMapping("/shipments/{productQr}")
 	public ResponseEntity<ApiResponse> cancelShipmentProduct(@PathVariable("productQr") String productQr) {
 		orderProductService.cancelProduct(productQr);
-		return ResponseEntity.ok().body(new ApiResponse(true, "product canceled"));
+		return ResponseEntity.ok().body(new ApiResponse(true, "납품/출하 항목을 삭제했습니다."));
 	}
 
 	@PutMapping("/shipments/{productQr}/complete")
 	public ResponseEntity<ApiResponse> completeShipment(@PathVariable("productQr") String productQr) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "shipment completed", orderProductService.completeShipment(productQr)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "출하되었습니다.", orderProductService.completeShipment(productQr)));
 	}
 
 	@PutMapping("/shipments/complete")
 	public ResponseEntity<ApiResponse> completeShipments(@RequestBody java.util.List<String> productQrs) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "shipments completed", orderProductService.completeShipments(productQrs)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "출하되었습니다.", orderProductService.completeShipments(productQrs)));
 	}
 	@PutMapping("/shipments/{productQr}")
 	public ResponseEntity<ApiResponse> putShipment(
@@ -70,23 +70,23 @@ public class OrderProductController {
 	        @RequestBody OrderProductProcessRequest request
 	) {
 	    return ResponseEntity.ok().body(
-	            new ApiResponse(true, "shipment updated", orderProductService.updateProductProcess(productQr, request))
+	            new ApiResponse(true, "납품/출하 정보를 수정했습니다.", orderProductService.updateProductProcess(productQr, request))
 	    );
 	}
 
 	@GetMapping("/labels")
 	public ResponseEntity<ApiResponse> getLabels() {
-		return ResponseEntity.ok().body(new ApiResponse(true, "labels loaded", orderProductService.findLabels()));
+		return ResponseEntity.ok().body(new ApiResponse(true, "라벨 목록을 조회했습니다.", orderProductService.findLabels()));
 	}
 
 	@GetMapping("/process-histories")
 	public ResponseEntity<ApiResponse> getProcessHistories() {
-		return ResponseEntity.ok().body(new ApiResponse(true, "products loaded", orderProductService.findProducts()));
+		return ResponseEntity.ok().body(new ApiResponse(true, "제품 공정 목록을 조회했습니다.", orderProductService.findProducts()));
 	}
 
 	@GetMapping("/products/{productQr}")
 	public ResponseEntity<ApiResponse> getProduct(@PathVariable("productQr") String productQr) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "product loaded", orderProductService.findProduct(productQr)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "제품 정보를 조회했습니다.", orderProductService.findProduct(productQr)));
 	}
 	
 }

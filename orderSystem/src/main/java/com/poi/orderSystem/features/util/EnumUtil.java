@@ -9,7 +9,7 @@ public class EnumUtil {
 	}
 
 	public enum ProcessStatus {
-		PURCHASESUBMIT("발주서 접수"), // 발주서 접수
+		PURCHASESUBMIT("대기중"), // 발주서 접수
 		INSTRUCTION("생산 지시"), // 제품 QR 생성
 		ASSEMBLY("생산중"), // 조립 공정
 		TEST("기능검사"), // 테스트 공정
@@ -20,6 +20,20 @@ public class EnumUtil {
 		private final String label;
 
 		ProcessStatus(String label) {
+			this.label = label;
+		}
+
+		public String getLabel() {
+			return label;
+		}
+	}
+
+	public enum Role {
+		USER("일반인"), ADMIN("관리자");
+
+		private final String label;
+
+		Role(String label) {
 			this.label = label;
 		}
 

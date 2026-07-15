@@ -25,30 +25,30 @@ public class OrderHistoryController {
 
 	@GetMapping("/histories")
 	public ResponseEntity<ApiResponse> getHistories() {
-		return ResponseEntity.ok().body(new ApiResponse(true, "histories loaded", orderHistoryService.findHistories()));
+		return ResponseEntity.ok().body(new ApiResponse(true, "제품이력 목록을 조회했습니다.", orderHistoryService.findHistories()));
 	}
 
-	@GetMapping("/histories/{historyId}")
-	public ResponseEntity<ApiResponse> getHistory(@PathVariable("historyId") Long historyId) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "history loaded", orderHistoryService.findHistory(historyId)));
+	@GetMapping("/histories/{productQr}")
+	public ResponseEntity<ApiResponse> getHistory(@PathVariable("productQr") String productQr) {
+		return ResponseEntity.ok().body(new ApiResponse(true, "제품이력을 조회했습니다.", orderHistoryService.findHistory(productQr)));
 	}
 
 	@PostMapping("/histories")
 	public ResponseEntity<ApiResponse> postHistory(@Valid @RequestBody OrderHistoryRequest request) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "history saved", orderHistoryService.saveHistory(request)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "제품이력을 저장했습니다.", orderHistoryService.saveHistory(request)));
 	}
 
-	@PutMapping("/histories/{historyId}")
+	@PutMapping("/histories/{productQr}")
 	public ResponseEntity<ApiResponse> putHistory(
-			@PathVariable("historyId") Long historyId,
+			@PathVariable("productQr") String productQr,
 			@Valid @RequestBody OrderHistoryRequest request
 	) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "history updated", orderHistoryService.updateHistory(historyId, request)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "제품이력을 수정했습니다.", orderHistoryService.updateHistory(productQr, request)));
 	}
 
-	@DeleteMapping("/histories/{historyId}")
-	public ResponseEntity<ApiResponse> deleteHistory(@PathVariable("historyId") Long historyId) {
-		orderHistoryService.deleteHistory(historyId);
-		return ResponseEntity.ok().body(new ApiResponse(true, "history deleted"));
+	@DeleteMapping("/histories/{productQr}")
+	public ResponseEntity<ApiResponse> deleteHistory(@PathVariable("productQr") String productQr) {
+		orderHistoryService.deleteHistory(productQr);
+		return ResponseEntity.ok().body(new ApiResponse(true, "제품이력을 삭제했습니다."));
 	}
 }

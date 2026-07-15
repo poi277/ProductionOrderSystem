@@ -18,7 +18,7 @@ const CATEGORY_ACTIVE_CLASSES: Record<CategoryActiveKey, string> = {
   production: "bg-amber-400 text-white",
   processOverview: "bg-orange-400 text-white",
   process: "bg-violet-400 text-white",
-  shipment: "bg-teal-400 text-white",
+  shipment: "bg-rose-400 text-white",
   label: "bg-pink-400 text-white",
   history: "bg-gray-400 text-white",
   qr: "bg-indigo-400 text-white",

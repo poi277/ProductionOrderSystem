@@ -87,28 +87,3 @@ function FormRow({ label, children }: { children: ReactNode; label: string }) {
     </label>
   );
 }
-
-function TextInput({
-  disabled,
-  onChange,
-  required,
-  type = "text",
-  value,
-}: {
-  disabled: boolean;
-  onChange: (value: string) => void;
-  required?: boolean;
-  type?: string;
-  value: string;
-}) {
-  return (
-    <input
-      className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-      disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
-      required={required}
-      type={type}
-      value={value}
-    />
-  );
-}

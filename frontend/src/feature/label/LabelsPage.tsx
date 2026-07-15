@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataListTable from "../common/DataListTable";
 import { formatKoreanDateTimeWithoutYear } from "../common/dateFormat";
 import ListToolbar from "../common/ListToolbar";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
+import { compareNumericText, matchesSearch, sortByConditions, updateSortConditions } from "../common/listDataUtils";
+import { useRowSelection } from "../common/useRowSelection";
 import type { Order } from "../order/OrdersTypes";
 import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
 import type { OrderLabelForm } from "../ordersidebar/OrderLabelFormCard";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import { useApiMutationRevision } from "../../../util/apiMutationStore";
 
 type LabelRow = {
   id: number;
@@ -68,8 +73,6 @@ type ApiResponse<T> = {
   data: T;
 };
 
-const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
-
 type SortKey = keyof Omit<LabelRow, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
@@ -82,17 +85,18 @@ const sortButtons: ListOption<SortKey>[] = [
 
 const labelColumns: DataListColumn<LabelRow>[] = [
   { align: "center", header: "QR데이터", key: "qrData", render: (row) => row.qrData },
-  { header: "제품명", key: "product", render: (row) => row.product },
+  { align: "center", header: "제품명", key: "product", render: (row) => row.product },
   { align: "center", header: "LOT", key: "lot", render: (row) => row.lot },
   { align: "center", header: "발주(생산)번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "생성시간", key: "createdAt", render: (row) => row.createdAt },
 ];
 
 export default function LabelsPage() {
+  const mutationRevision = useApiMutationRevision();
   const [labels, setLabels] = useState<LabelRow[]>([]);
   const [loadError, setLoadError] = useState("");
   const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
-  const [checkedRowIds, setCheckedRowIds] = useState<number[]>([]);
+  const { selectedIds: checkedRowIds, toggleOne: toggleRowCheckbox } = useRowSelection<number>();
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
   const [searchField, setSearchField] = useState<SortKey>("qrData");
   const [searchText, setSearchText] = useState("");
@@ -101,10 +105,10 @@ export default function LabelsPage() {
   useEffect(() => {
     const loadLabels = async () => {
       try {
-        const response = await fetch(`${orderApiBaseUrl}/labels`);
+        const response = await apiClient(orderEndpoints.labels);
 
         if (!response.ok) {
-          setLoadError("라벨 목록을 불러오지 못했습니다.");
+          setLoadError(await getApiErrorMessage(response, "라벨 목록을 불러오지 못했습니다."));
           setLabels([]);
           return;
         }
@@ -119,7 +123,7 @@ export default function LabelsPage() {
     };
 
     void loadLabels();
-  }, []);
+  }, [mutationRevision]);
 
   useEffect(() => {
     const handleCreate = (event: Event) => {
@@ -159,20 +163,21 @@ export default function LabelsPage() {
     };
   }, [closeOrderSidebar]);
 
-  const searchOptions = Array.from(new Set(labels.map((row) => String(row[searchField]))));
-  const filteredRows = labels.filter((row) =>
-    String(row[searchField]).toLowerCase().includes(searchText.toLowerCase()),
+  const searchOptions = useMemo(
+    () => Array.from(new Set(labels.map((row) => String(row[searchField])))),
+    [labels, searchField],
   );
-  const sortedRows = sortRows(filteredRows, sortConditions);
+  const sortedRows = useMemo(() => {
+    const filteredRows = labels.filter((row) => matchesSearch(row[searchField], searchText));
+    return sortByConditions(filteredRows, sortConditions, (row, key) => row[key], compareNumericText);
+  }, [labels, searchField, searchText, sortConditions]);
 
   const handleSort = (key: SortKey) => {
     setSortConditions((current) => updateSortConditions(current, key));
   };
 
   const handleToggleCheckbox = (row: LabelRow) => {
-    setCheckedRowIds((current) =>
-      current.includes(row.id) ? current.filter((rowId) => rowId !== row.id) : [...current, row.id],
-    );
+    toggleRowCheckbox(row.id);
   };
 
   const handleSelectRow = (row: LabelRow) => {
@@ -197,6 +202,10 @@ export default function LabelsPage() {
           sortConditions={sortConditions}
         />
         <DataListTable
+          categoryKey="label"
+          onColumnSort={(key) => handleSort(key as SortKey)}
+          sortableColumnKeys={sortButtons.map((option) => option.key)}
+          sortConditions={sortConditions}
           checkedRowIds={checkedRowIds}
           columns={labelColumns}
           emptyMessage={loadError || "리스트가 비어있습니다."}
@@ -210,25 +219,6 @@ export default function LabelsPage() {
       </section>
     </main>
   );
-}
-
-function sortRows(rows: LabelRow[], conditions: SortCondition<SortKey>[]) {
-  return [...rows].sort((a, b) => {
-    for (const condition of conditions) {
-      const result = String(a[condition.key]).localeCompare(String(b[condition.key]), "ko", { numeric: true });
-      if (result !== 0) return condition.direction === "asc" ? result : -result;
-    }
-    return 0;
-  });
-}
-
-function updateSortConditions(current: SortCondition<SortKey>[], key: SortKey) {
-  const existing = current.find((condition) => condition.key === key);
-  if (!existing) return [...current, { key, direction: "asc" as const }];
-  if (existing.direction === "asc") {
-    return current.map((condition) => (condition.key === key ? { ...condition, direction: "desc" as const } : condition));
-  }
-  return current.filter((condition) => condition.key !== key);
 }
 
 function toSidebarOrder(row: LabelRow): Order {

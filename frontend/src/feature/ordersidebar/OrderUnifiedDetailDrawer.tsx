@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Order, PurchaseOption } from "../order/OrdersTypes";
-import ProductProcessStep from "./ProductProcessStep";
+import ProductProcessProgress from "./ProductProcessProgress";
+import ProductionProcessProgress from "./ProductionProcessProgress";
+import { toProcessStatus } from "./processStatusUtils";
 import {
   deleteProduct,
   deletePurchase,
@@ -11,6 +13,11 @@ import {
   updatePurchaseDetail,
 } from "./orderDetailApi";
 import type { ProcessStatus, ProductDetail, PurchaseDetail } from "./orderDetailApi";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import { useAsyncAction } from "../common/useAsyncAction";
+import DrawerActionButtons from "./DrawerActionButtons";
+import type { SidebarNotification } from "./OrderSidebarContext";
 
 type PurchaseForm = {
   purchaseId: string;
@@ -24,6 +31,7 @@ type PurchaseForm = {
 type ProductionForm = { purchaseId: string; productCodePrefix: string; lot: string; quantity: string };
 
 export enum DrawerCategory {
+  DISABLED = "disabled",
   PURCHASE = "purchase",
   PRODUCTION = "production",
   PROCESS_OVERVIEW = "processOverview",
@@ -36,6 +44,7 @@ type Props = {
   processEditable: boolean;
   selectedItem: Order | null;
   purchaseOptions: PurchaseOption[];
+  externalNotification: SidebarNotification;
 };
 
 const EMPTY_PURCHASE: PurchaseDetail = {
@@ -53,6 +62,7 @@ const EMPTY_PURCHASE: PurchaseDetail = {
 
 export default function OrderUnifiedDetailDrawer({
   category,
+  externalNotification,
   onClose,
   processEditable,
   selectedItem,
@@ -73,6 +83,7 @@ export default function OrderUnifiedDetailDrawer({
   const productionEditable = category === DrawerCategory.PRODUCTION;
   const processOverviewEditable = category === DrawerCategory.PROCESS_OVERVIEW;
   const productEditable = category === DrawerCategory.PRODUCT;
+  const drawerDisabled = category === DrawerCategory.DISABLED;
 
   const [purchase, setPurchase] = useState<PurchaseDetail | null>(null);
   const [product, setProduct] = useState<ProductDetail | null>(null);
@@ -86,6 +97,18 @@ export default function OrderUnifiedDetailDrawer({
   const [pendingOrderProcess, setPendingOrderProcess] = useState<ProcessStatus | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const { isPending: isActionPending, run: runAction } = useAsyncAction();
+
+  useEffect(() => {
+    const handleNotification = (event: Event) => {
+      const detail = (event as CustomEvent<{ error?: boolean; message?: string }>).detail;
+      setError(detail?.error ? detail.message ?? "" : "");
+      setMessage(detail?.error ? "" : detail?.message ?? "");
+    };
+
+    window.addEventListener("order-sidebar-notification", handleNotification);
+    return () => window.removeEventListener("order-sidebar-notification", handleNotification);
+  }, []);
 
   const selectPurchaseForProduction = async (nextPurchaseId: string) => {
     const selectedOption = purchaseOptions.find((option) => option.purchaseId === nextPurchaseId);
@@ -119,6 +142,7 @@ export default function OrderUnifiedDetailDrawer({
     setPendingProcess(null);
     setPendingDefect(null);
     setPendingOrderProcess(null);
+    setError("");
     setMessage("");
     if (!order) {
       setPendingOrderProcess("PURCHASESUBMIT");
@@ -127,7 +151,11 @@ export default function OrderUnifiedDetailDrawer({
       setPurchase(purchaseDetail);
       setForm(toForm(purchaseDetail));
       setLoadedPurchaseDbId(purchaseDetail.id || null);
-      setPendingOrderProcess(purchaseDetail.status);
+      setPendingOrderProcess(
+        purchaseDetail.status
+          ?? toProcessStatus(order.productProcessStatus)
+          ?? null,
+      );
       setProductionForm({
         purchaseId: purchaseId ?? "",
         productCodePrefix: productCodePrefix(order?.productQr, purchaseId),
@@ -189,12 +217,12 @@ export default function OrderUnifiedDetailDrawer({
           window.dispatchEvent(new CustomEvent("order-purchase-updated", { detail: { previousOrderNo: previousPurchaseId, order: updated } }));
           setMessage("발주서가 저장되었습니다.");
         } else {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order"}/post`, {
+          const response = await apiClient(orderEndpoints.create, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ purchaseId: form.purchaseId, customer: form.customer, productName: form.productName, quantity: numberOrNull(form.quantity), unitPrice: numberOrNull(form.price), dueDate: form.dueDate || null, note: form.note }),
           });
-          if (!response.ok) throw new Error("발주서를 입력하지 못했습니다.");
+          if (!response.ok) throw new Error(await getApiErrorMessage(response, "발주서를 입력하지 못했습니다."));
           const result = (await response.json()) as { data: PurchaseDetail };
           setPurchase(result.data);
           setForm(toForm(result.data));
@@ -214,20 +242,20 @@ export default function OrderUnifiedDetailDrawer({
           productionQuantity: numberOrNull(productionForm.quantity),
         };
         if (hasProduction && loadedProductionId) {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order"}/productions/${encodeURIComponent(loadedProductionId)}`, {
+          const response = await apiClient(orderEndpoints.production(loadedProductionId), {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(productionBody),
           });
-          if (!response.ok) throw new Error("생산지시를 수정하지 못했습니다.");
+          if (!response.ok) throw new Error(await getApiErrorMessage(response, "생산지시를 수정하지 못했습니다."));
           await response.json();
         } else {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order"}/productions`, {
+          const response = await apiClient(orderEndpoints.productions, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(productionBody),
           });
-          if (!response.ok) throw new Error("생산지시를 입력하지 못했습니다.");
+          if (!response.ok) throw new Error(await getApiErrorMessage(response, "생산지시를 입력하지 못했습니다."));
           const result = (await response.json()) as { data?: { id?: number; purchaseId?: string; productQr?: string } };
           if (result.data?.id != null) setLoadedProductionId(result.data.id);
           if (result.data?.productQr) {
@@ -277,8 +305,8 @@ export default function OrderUnifiedDetailDrawer({
         await deleteProduct(loadedProductQr);
         window.dispatchEvent(new CustomEvent<number>("product-process-deleted", { detail: order?.id ?? 0 }));
       } else if (productionEntityEditable && loadedProductionId) {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order"}/productions/${encodeURIComponent(loadedProductionId)}`, { method: "DELETE" });
-        if (!response.ok) throw new Error("생산지시를 삭제하지 못했습니다.");
+        const response = await apiClient(orderEndpoints.production(loadedProductionId), { method: "DELETE" });
+        if (!response.ok) throw new Error(await getApiErrorMessage(response, "생산지시를 삭제하지 못했습니다."));
         window.dispatchEvent(new CustomEvent<string>("production-order-deleted", { detail: purchase?.purchaseId ?? productionForm.purchaseId }));
       } else if (loadedPurchaseDbId !== null) {
         await deletePurchase(loadedPurchaseDbId);
@@ -306,6 +334,7 @@ export default function OrderUnifiedDetailDrawer({
           <ProductionSection
             active={productionEditable}
             processActive={processOverviewEditable}
+            processDisplayEnabled={processOverviewEditable || order?.detailType === "process"}
             form={productionForm}
             hasProduction={hasProduction}
             pending={pendingOrderProcess}
@@ -315,12 +344,20 @@ export default function OrderUnifiedDetailDrawer({
             onChange={setPendingOrderProcess}
           />
           <ProductArea active={productEditable} product={product} pending={pendingProcess} pendingDefect={pendingDefect} onChange={setPendingProcess} onDefectChange={setPendingDefect} />
+          <NotificationCard
+            error={externalNotification?.error ?? Boolean(error)}
+            message={externalNotification?.message ?? (error || message)}
+          />
         </div>
-        {error && <div className="mt-3"><Notice error>{error}</Notice></div>}
-        {message && <div className="mt-3"><Notice>{message}</Notice></div>}
       </div>
 
-      <DrawerActionButtons canSave={hasChanges} onDelete={() => void handleDelete()} onSave={() => void saveChanges()} deletable={hasPurchase || hasProduction || hasProduct} />
+      <DrawerActionButtons
+        canSave={!drawerDisabled && hasChanges}
+        deletable={!drawerDisabled && (hasPurchase || hasProduction || hasProduct)}
+        isPending={isActionPending}
+        onDelete={() => runAction(handleDelete)}
+        onSave={() => runAction(saveChanges)}
+      />
     </div>
   );
 }
@@ -341,9 +378,10 @@ function PurchaseOrderSection({ active, form, productionMode, purchaseOptions, s
   );
 }
 
-function ProductionSection({ active, processActive, form, hasProduction, pending, processEditable, purchase, onFormChange, onChange }: {
+function ProductionSection({ active, processActive, processDisplayEnabled, form, hasProduction, pending, processEditable, purchase, onFormChange, onChange }: {
   active: boolean;
   processActive: boolean;
+  processDisplayEnabled: boolean;
   form: ProductionForm;
   hasProduction: boolean;
   pending: ProcessStatus | null;
@@ -361,7 +399,7 @@ function ProductionSection({ active, processActive, form, hasProduction, pending
         </div>
       </Section>
       <Section active={processActive} category="processOverview" height="h-[120px] shrink-0" title="전체 공정 현황">
-        <div className="overflow-x-auto py-2"><ProductProcessStep accent="orange" disabled={!processActive || !hasProduction} editable={processActive && hasProduction && processEditable} status={purchase?.status} pendingStatus={pending} onChange={onChange} /></div>
+        <div className="overflow-x-auto py-2"><ProductionProcessProgress active={processActive} displayEnabled={processDisplayEnabled} editable={processEditable} hasProduction={hasProduction} status={purchase?.status} pendingStatus={pending} onChange={onChange} /></div>
       </Section>
     </>
   );
@@ -402,7 +440,7 @@ function Section({ active, category, children, height, title }: {
     product: "text-violet-700",
   }[category];
   return (
-    <section className={`${height} flex flex-col overflow-y-auto border-l-4 p-4 transition-colors ${active ? `bg-white ${activeStyle} opacity-100` : "border-l-slate-300 bg-slate-50 opacity-90"}`}>
+    <section className={`${height} flex flex-col overflow-y-auto border-l-4 bg-white p-4 transition-colors ${active ? activeStyle : "border-l-slate-300"}`}>
       <h3 className={`mb-4 text-xs ${active ? `font-extrabold ${titleStyle}` : "font-semibold text-slate-600"}`}>{title}</h3>
       {children}
     </section>
@@ -448,18 +486,8 @@ function InformationGrid({ form, editing, purchaseOptions, selectedPurchaseId, o
 }
 
 function ProductSection({ product, editing, pending, pendingDefect, onChange, onDefectChange }: { product: ProductDetail | null; editing: boolean; pending: ProcessStatus | null; pendingDefect: boolean | null; onChange: (value: ProcessStatus) => void; onDefectChange: (value: boolean) => void }) {
-  return <div><dl className="grid grid-cols-1 gap-y-3"><div className="grid grid-cols-[88px_1fr] items-center gap-2"><dt className="text-[13px] font-bold text-slate-600">제품 QR</dt><dd><input className={readonlyFieldClass} disabled={!product} readOnly value={product?.productQr ?? ""} /></dd></div><div className="grid grid-cols-[88px_1fr] items-center gap-2"><dt className="text-[13px] font-bold text-slate-600">판정</dt><dd className="grid grid-cols-2 gap-2"><button className={`h-8 rounded-md border text-xs font-bold ${pendingDefect === false ? "border-violet-400 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500"} disabled:cursor-not-allowed disabled:opacity-60`} disabled={!editing} onClick={() => onDefectChange(false)} type="button">정상</button><button className={`h-8 rounded-md border text-xs font-bold ${pendingDefect === true ? "border-rose-400 bg-rose-50 text-rose-700" : "border-slate-200 bg-white text-slate-500"} disabled:cursor-not-allowed disabled:opacity-60`} disabled={!editing} onClick={() => onDefectChange(true)} type="button">불량</button></dd></div></dl><div className="mt-4 overflow-x-auto"><ProductProcessStep accent="violet" disabled={!editing} editable={editing} status={product?.process} pendingStatus={pending} onChange={onChange} /></div></div>;
+  return <div><dl className="grid grid-cols-1 gap-y-3"><div className="grid grid-cols-[88px_1fr] items-center gap-2"><dt className="text-[13px] font-bold text-slate-600">제품 QR</dt><dd><input className={readonlyFieldClass} disabled={!product} readOnly value={product?.productQr ?? ""} /></dd></div><div className="grid grid-cols-[88px_1fr] items-center gap-2"><dt className="text-[13px] font-bold text-slate-600">판정</dt><dd className="grid grid-cols-2 gap-2"><button className={`h-8 rounded-md border text-xs font-bold ${editing && pendingDefect === false ? "border-violet-400 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500"} disabled:cursor-not-allowed`} disabled={!editing} onClick={() => onDefectChange(false)} type="button">정상</button><button className={`h-8 rounded-md border text-xs font-bold ${editing && pendingDefect === true ? "border-rose-400 bg-rose-50 text-rose-700" : "border-slate-200 bg-white text-slate-500"} disabled:cursor-not-allowed`} disabled={!editing} onClick={() => onDefectChange(true)} type="button">불량</button></dd></div></dl><div className="mt-4 overflow-x-auto"><ProductProcessProgress editing={editing} status={product?.process} pendingStatus={pending} onChange={onChange} /></div></div>;
 }
-
-const PROCESS_STATUSES: ProcessStatus[] = [
-  "PURCHASESUBMIT",
-  "INSTRUCTION",
-  "ASSEMBLY",
-  "TEST",
-  "FINAL_INSPECTION",
-  "PACKAGING",
-  "WAITING_FOR_SHIPMENT",
-];
 
 function toPurchaseDetail(order: Order): PurchaseDetail {
   return {
@@ -470,7 +498,7 @@ function toPurchaseDetail(order: Order): PurchaseDetail {
     quantity: toNullableNumber(order.quantity),
     price: order.purchasePrice ?? toNullableNumber(order.unitPrice),
     dueDate: order.purchaseDueDate ?? null,
-    status: PROCESS_STATUSES.find((status) => status === order.purchaseStatus) ?? null,
+    status: toProcessStatus(order.purchaseStatus),
     note: order.purchaseNote ?? null,
     createdTime: order.purchaseCreatedTime ?? order.createdAt ?? null,
   };
@@ -483,7 +511,7 @@ function toNullableNumber(value: string | undefined) {
 }
 
 function toProductDetail(order: Order | null, productQr: string): ProductDetail {
-  const process = PROCESS_STATUSES.find((status) => status === order?.productProcessStatus) ?? null;
+  const process = toProcessStatus(order?.productProcessStatus);
   const parsedQuantity = Number(order?.quantity);
   return {
     productQr,
@@ -500,12 +528,26 @@ function toProductDetail(order: Order | null, productQr: string): ProductDetail 
   };
 }
 
-function Notice({ children, error }: { children: React.ReactNode; error?: boolean }) {
-  return <div className={`rounded-lg px-3 py-4 text-center text-xs font-bold ${error ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-500"}`}>{children}</div>;
-}
-
-function DrawerActionButtons({ canSave, deletable, onDelete, onSave }: { canSave: boolean; deletable: boolean; onDelete: () => void; onSave: () => void }) {
-  return <div className="sticky bottom-0 z-20 flex gap-2 border-t border-slate-200 bg-white p-3"><button className="h-9 flex-1 rounded-lg bg-slate-900 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={!canSave} onClick={onSave} type="button">저장</button><button className="h-9 flex-1 rounded-lg border border-rose-200 text-xs font-bold text-rose-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300" disabled={!deletable} onClick={onDelete} type="button">삭제</button></div>;
+function NotificationCard({ error, message }: { error: boolean; message: string }) {
+  const active = Boolean(message);
+  return (
+    <section
+      aria-live="polite"
+      className={`min-h-[53px] shrink-0 border-y border-l-4 border-y-slate-200 p-4 transition-colors ${
+        !active
+          ? "border-l-slate-300 bg-slate-50"
+          : error
+            ? "border-l-red-500 bg-white"
+            : "border-l-emerald-500 bg-white"
+      }`}
+    >
+      {active && (
+        <p className={`text-[13px] font-bold leading-5 ${error ? "text-red-700" : "text-emerald-700"}`}>
+          {message}
+        </p>
+      )}
+    </section>
+  );
 }
 
 const readonlyFieldClass = "h-8 w-full min-w-0 cursor-default rounded-md border border-slate-200 bg-slate-100 px-2 text-[13px] font-semibold text-slate-700 outline-none";

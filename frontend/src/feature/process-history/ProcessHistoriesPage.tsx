@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataListTable from "../common/DataListTable";
 import { formatKoreanDayTime } from "../common/dateFormat";
 import ListToolbar from "../common/ListToolbar";
 import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import { useApiMutationRevision } from "../../../util/apiMutationStore";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
+import { compareNumericText, matchesSearch, sortByConditions, updateSortConditions } from "../common/listDataUtils";
+import { useRowSelection } from "../common/useRowSelection";
 import type { Order } from "../order/OrdersTypes";
 import type { OrderProcessForm } from "../ordersidebar/OrderProcessFormCard";
 import type { ProcessStatus } from "../ordersidebar/orderDetailApi";
@@ -55,8 +60,6 @@ type ProductResponse = {
 type ApiResponse<T> = { success: boolean; message: string; data: T };
 type SortKey = keyof Omit<ProductRow, "id">;
 
-const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
-
 const BATCH_PROCESS_OPTIONS: Array<{ value: ProcessStatus; label: string }> = [
   { value: "INSTRUCTION", label: "생산지시" },
   { value: "ASSEMBLY", label: "생산중" },
@@ -77,8 +80,7 @@ const sortButtons: ListOption<SortKey>[] = [
   { label: "발주수량", key: "quantity" },
   { label: "Lot No.", key: "lot" },
   { label: "제품QR", key: "productQr" },
-  { label: "공정순서", key: "processSequence" },
-  { label: "판정", key: "judgment" },
+  { label: "공정순서 및 판정", key: "processSequence" },
   { label: "완료시간", key: "completedTime" },
 ];
 
@@ -90,16 +92,17 @@ const columns: DataListColumn<ProductRow>[] = [
   { align: "center", header: "발주수량", key: "quantity", render: (row) => row.quantity },
   { align: "center", header: "Lot No.", key: "lot", render: (row) => row.lot },
   { align: "center", header: "제품QR", key: "productQr", render: (row) => row.productQr },
-  { align: "center", header: "공정순서", key: "processSequence", render: (row) => row.processSequence },
   {
     align: "center",
-    header: "판정",
-    key: "judgment",
+    header: "공정순서 및 판정",
+    key: "processSequence",
     render: (row) => (
       <span className={`rounded-full px-3 py-1 font-bold ${
-        row.judgment === "불량" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
-      }`}>
-        {row.judgment}
+          row.judgment === "불량"
+            ? "bg-rose-50 text-rose-700"
+            : "bg-emerald-50 text-emerald-700"
+        }`}>
+        {row.processSequence}
       </span>
     ),
   },
@@ -107,14 +110,15 @@ const columns: DataListColumn<ProductRow>[] = [
 ];
 
 export default function ProcessHistoriesPage() {
+  const mutationRevision = useApiMutationRevision();
   const [products, setProducts] = useState<ProductRow[]>([]);
-  const [checkedRowIds, setCheckedRowIds] = useState<number[]>([]);
+  const { selectedIds: checkedRowIds, setSelectedIds: setCheckedRowIds, toggleOne: toggleRowCheckbox } = useRowSelection<number>();
   const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState("");
   const [searchField, setSearchField] = useState<SortKey>("productQr");
   const [searchText, setSearchText] = useState("");
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
-  const [batchJudgment, setBatchJudgment] = useState<"normal" | "defect" | "">("");
+  const [batchJudgment, setBatchJudgment] = useState<"normal" | "defect">("normal");
   const [batchProcess, setBatchProcess] = useState<ProcessStatus | "">("");
   const [isBatchSaving, setIsBatchSaving] = useState(false);
   const { closeOrderSidebar, openOrderDetailSidebar } = useOrderSidebar();
@@ -122,8 +126,8 @@ export default function ProcessHistoriesPage() {
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const response = await fetch(`${orderApiBaseUrl}/process-histories`);
-        if (!response.ok) throw new Error();
+        const response = await apiClient(orderEndpoints.processHistories);
+        if (!response.ok) throw new Error(await getApiErrorMessage(response, "공정이력 목록을 조회하지 못했습니다."));
         const result = (await response.json()) as ApiResponse<ProductResponse[]>;
         setLoadError("");
         setProducts(result.data.map(toProductRow));
@@ -133,7 +137,7 @@ export default function ProcessHistoriesPage() {
       }
     };
     void loadProducts();
-  }, []);
+  }, [mutationRevision]);
 
   useEffect(() => {
     const handleProcessUpdate = (event: Event) => {
@@ -154,16 +158,17 @@ export default function ProcessHistoriesPage() {
     return () => window.removeEventListener("product-history-process-updated", handleProcessUpdate);
   }, []);
 
-  const searchOptions = Array.from(new Set(products.map((row) => String(row[searchField]))));
-  const filteredRows = products.filter((row) =>
-    String(row[searchField]).toLowerCase().includes(searchText.toLowerCase()),
+  const searchOptions = useMemo(
+    () => Array.from(new Set(products.map((row) => String(row[searchField])))),
+    [products, searchField],
   );
-  const sortedRows = sortRows(filteredRows, sortConditions);
+  const sortedRows = useMemo(() => {
+    const filteredRows = products.filter((row) => matchesSearch(row[searchField], searchText));
+    return sortByConditions(filteredRows, sortConditions, (row, key) => row[key], compareNumericText);
+  }, [products, searchField, searchText, sortConditions]);
 
   const handleToggleCheckbox = (row: ProductRow) => {
-    setCheckedRowIds((current) =>
-      current.includes(row.id) ? current.filter((rowId) => rowId !== row.id) : [...current, row.id],
-    );
+    toggleRowCheckbox(row.id);
   };
 
   const handleSelectProduct = (row: ProductRow) => {
@@ -180,14 +185,15 @@ export default function ProcessHistoriesPage() {
 
     const responses = await Promise.all(
       selectedRows.map((row) =>
-        fetch(`${orderApiBaseUrl}/shipments/${encodeURIComponent(row.productQr)}`, {
+        apiClient(orderEndpoints.shipment(row.productQr), {
           method: "DELETE",
         }),
       ),
     );
 
-    if (responses.some((response) => !response.ok)) {
-      window.alert("선택한 공정이력 삭제에 실패했습니다.");
+    const failedResponse = responses.find((response) => !response.ok);
+    if (failedResponse) {
+      window.alert(await getApiErrorMessage(failedResponse, "선택한 공정이력 삭제에 실패했습니다."));
       return;
     }
 
@@ -203,13 +209,13 @@ export default function ProcessHistoriesPage() {
 
   const handleBatchSave = async () => {
     const selectedRows = products.filter((row) => checkedRowIds.includes(row.id));
-    if (selectedRows.length === 0 || !batchJudgment || !batchProcess) return;
+    if (selectedRows.length === 0 || !batchProcess) return;
 
     setIsBatchSaving(true);
     try {
       const responses = await Promise.all(
         selectedRows.map((row) =>
-          fetch(`${orderApiBaseUrl}/product-processes/${encodeURIComponent(row.productQr)}`, {
+          apiClient(orderEndpoints.productProcess(row.productQr), {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -220,8 +226,9 @@ export default function ProcessHistoriesPage() {
         ),
       );
 
-      if (responses.some((response) => !response.ok)) {
-        window.alert("선택한 공정이력 일괄 저장에 실패했습니다.");
+      const failedResponse = responses.find((response) => !response.ok);
+      if (failedResponse) {
+        window.alert(await getApiErrorMessage(failedResponse, "선택한 공정이력 일괄 저장에 실패했습니다."));
         return;
       }
 
@@ -233,7 +240,7 @@ export default function ProcessHistoriesPage() {
         judgment: batchJudgment === "defect" ? "불량" : "정상",
       } : row));
       setCheckedRowIds([]);
-      setBatchJudgment("");
+      setBatchJudgment("normal");
       setBatchProcess("");
       setSelectedRowId(null);
       closeOrderSidebar();
@@ -248,14 +255,13 @@ export default function ProcessHistoriesPage() {
         <ListToolbar
           categoryKey="process"
           afterDelete={
-            <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <select
                 aria-label="판정 일괄 선택"
                 className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 outline-none focus:border-violet-400"
-                onChange={(event) => setBatchJudgment(event.target.value as "normal" | "defect" | "")}
+                onChange={(event) => setBatchJudgment(event.target.value as "normal" | "defect")}
                 value={batchJudgment}
               >
-                <option value="">판정 선택</option>
                 <option value="normal">정상</option>
                 <option value="defect">불량</option>
               </select>
@@ -270,7 +276,7 @@ export default function ProcessHistoriesPage() {
               </select>
               <button
                 className="h-10 rounded-lg bg-violet-600 px-4 text-sm font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                disabled={checkedRowIds.length === 0 || !batchJudgment || !batchProcess || isBatchSaving}
+                disabled={checkedRowIds.length === 0 || !batchProcess || isBatchSaving}
                 onClick={() => void handleBatchSave()}
                 type="button"
               >
@@ -290,6 +296,10 @@ export default function ProcessHistoriesPage() {
           sortConditions={sortConditions}
         />
         <DataListTable
+          categoryKey="process"
+          onColumnSort={(key) => setSortConditions((current) => updateSortConditions(current, key as SortKey))}
+          sortableColumnKeys={sortButtons.map((option) => option.key)}
+          sortConditions={sortConditions}
           checkedRowIds={checkedRowIds}
           columns={columns}
           emptyMessage={loadError || "리스트가 비어있습니다."}
@@ -368,25 +378,4 @@ function toProductRow(product: ProductResponse, index: number): ProductRow {
     purchaseCreatedTime: product.purchaseCreatedTime,
     dueDate: product.dueDate,
   };
-}
-
-function sortRows(rows: ProductRow[], conditions: SortCondition<SortKey>[]) {
-  return [...rows].sort((a, b) => {
-    for (const condition of conditions) {
-      const result = String(a[condition.key]).localeCompare(String(b[condition.key]), "ko", { numeric: true });
-      if (result !== 0) return condition.direction === "asc" ? result : -result;
-    }
-    return 0;
-  });
-}
-
-function updateSortConditions(current: SortCondition<SortKey>[], key: SortKey) {
-  const existing = current.find((condition) => condition.key === key);
-  if (!existing) return [...current, { key, direction: "asc" as const }];
-  if (existing.direction === "asc") {
-    return current.map((condition) =>
-      condition.key === key ? { ...condition, direction: "desc" as const } : condition,
-    );
-  }
-  return current.filter((condition) => condition.key !== key);
 }

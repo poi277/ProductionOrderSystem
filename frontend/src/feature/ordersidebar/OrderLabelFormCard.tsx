@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { TextFieldRow } from "./DetailFieldRows";
 
 export type OrderLabelForm = {
   productionOrderId: string;
@@ -46,96 +46,16 @@ export default function OrderLabelFormCard({
       )}
 
       <div className="mt-3 flex flex-col gap-3">
-        <FormRow label={text.productionOrderId}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productionOrderId", value)}
-            value={form.productionOrderId}
-          />
-        </FormRow>
-        <FormRow label={text.productionOrderNo}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("productionOrderNo", value)}
-            value={form.productionOrderNo}
-          />
-        </FormRow>
-        <FormRow label={text.qrData}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("qrData", value)}
-            required
-            value={form.qrData}
-          />
-        </FormRow>
-        <FormRow label={text.title}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("title", value)} value={form.title} />
-        </FormRow>
-        <FormRow label={text.line1}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("line1", value)} value={form.line1} />
-        </FormRow>
-        <FormRow label={text.line2}>
-          <TextInput disabled={disabled} onChange={(value) => onChange?.("line2", value)} value={form.line2} />
-        </FormRow>
-        <FormRow label={text.printedAt}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("printedAt", value)}
-            type="datetime-local"
-            value={form.printedAt}
-          />
-        </FormRow>
-        <FormRow label={text.createdAt}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("createdAt", value)}
-            type="datetime-local"
-            value={form.createdAt}
-          />
-        </FormRow>
-        <FormRow label={text.updatedAt}>
-          <TextInput
-            disabled={disabled}
-            onChange={(value) => onChange?.("updatedAt", value)}
-            type="datetime-local"
-            value={form.updatedAt}
-          />
-        </FormRow>
+        <TextFieldRow disabled={disabled} label={text.productionOrderId} onChange={(value) => onChange?.("productionOrderId", value)} value={form.productionOrderId} />
+        <TextFieldRow disabled={disabled} label={text.productionOrderNo} onChange={(value) => onChange?.("productionOrderNo", value)} value={form.productionOrderNo} />
+        <TextFieldRow disabled={disabled} label={text.qrData} onChange={(value) => onChange?.("qrData", value)} required value={form.qrData} />
+        <TextFieldRow disabled={disabled} label={text.title} onChange={(value) => onChange?.("title", value)} value={form.title} />
+        <TextFieldRow disabled={disabled} label={text.line1} onChange={(value) => onChange?.("line1", value)} value={form.line1} />
+        <TextFieldRow disabled={disabled} label={text.line2} onChange={(value) => onChange?.("line2", value)} value={form.line2} />
+        <TextFieldRow disabled={disabled} label={text.printedAt} onChange={(value) => onChange?.("printedAt", value)} type="datetime-local" value={form.printedAt} />
+        <TextFieldRow disabled={disabled} label={text.createdAt} onChange={(value) => onChange?.("createdAt", value)} type="datetime-local" value={form.createdAt} />
+        <TextFieldRow disabled={disabled} label={text.updatedAt} onChange={(value) => onChange?.("updatedAt", value)} type="datetime-local" value={form.updatedAt} />
       </div>
     </section>
-  );
-}
-
-function FormRow({ label, children }: { children: ReactNode; label: string }) {
-  return (
-    <label className="grid grid-cols-[84px_minmax(0,1fr)] items-start gap-2 text-xs">
-      <span className="pt-2 font-extrabold text-slate-900">{label}</span>
-      <div className="min-w-0">{children}</div>
-    </label>
-  );
-}
-
-function TextInput({
-  disabled,
-  onChange,
-  required,
-  type = "text",
-  value,
-}: {
-  disabled: boolean;
-  onChange: (value: string) => void;
-  required?: boolean;
-  type?: string;
-  value: string;
-}) {
-  return (
-    <input
-      className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 outline-none disabled:bg-[#f6f7f9] disabled:font-bold disabled:text-slate-900 focus:border-[#2f80ed]"
-      disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
-      required={required}
-      type={type}
-      value={value}
-    />
   );
 }

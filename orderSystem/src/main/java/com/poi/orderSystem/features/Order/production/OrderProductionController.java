@@ -26,18 +26,18 @@ public class OrderProductionController {
 
 	@GetMapping
 	public ResponseEntity<ApiResponse> getProductions() {
-		return ResponseEntity.ok().body(new ApiResponse(true, "production orders loaded", orderProductionService.findProductions()));
+		return ResponseEntity.ok().body(new ApiResponse(true, "생산지시 목록을 조회했습니다.", orderProductionService.findProductions()));
 	}
 
 	@GetMapping("/product-processes")
 	public ResponseEntity<ApiResponse> getProductProcesses() {
 		return ResponseEntity.ok()
-				.body(new ApiResponse(true, "product processes loaded", orderProductionService.findProductProcesses()));
+				.body(new ApiResponse(true, "제품 공정 목록을 조회했습니다.", orderProductionService.findProductProcesses()));
 	}
 
 	@PostMapping
 	public ResponseEntity<ApiResponse> postProduction(@Valid @RequestBody OrderProductionRequest request) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "production order saved", orderProductionService.saveProduction(request)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "생산지시를 저장했습니다.", orderProductionService.saveProduction(request)));
 	}
 
 	@PutMapping("/{id}")
@@ -45,13 +45,13 @@ public class OrderProductionController {
 			@PathVariable("id") Long id,
 			@Valid @RequestBody OrderProductionRequest request
 	) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "production order updated", orderProductionService.updateProduction(id, request)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "생산지시를 수정했습니다.", orderProductionService.updateProduction(id, request)));
 	}
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ApiResponse> deleteProduction(@PathVariable("id") Long id) {
 		orderProductionService.deleteProduction(id);
-		return ResponseEntity.ok().body(new ApiResponse(true, "production order deleted"));
+		return ResponseEntity.ok().body(new ApiResponse(true, "생산지시를 삭제했습니다."));
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

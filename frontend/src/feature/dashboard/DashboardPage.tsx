@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import DashboardOrdersTable from "./DashboardOrdersTable";
 import { fetchDashboardOrders } from "./dashboardApi";
 import type { DashboardOrder } from "./dashboardTypes";
+import { useApiMutationRevision } from "../../../util/apiMutationStore";
 
 export default function DashboardPage() {
+  const mutationRevision = useApiMutationRevision();
   const [orders, setOrders] = useState<DashboardOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -30,7 +32,7 @@ export default function DashboardPage() {
 
     void loadOrders();
     return () => controller.abort();
-  }, []);
+  }, [mutationRevision]);
 
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">

@@ -2,15 +2,17 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import type { Order, PurchaseOption, SidebarFormType } from "../order/OrdersTypes";
 import OrderUnifiedDetailDrawer, { DrawerCategory } from "./OrderUnifiedDetailDrawer";
+import type { SidebarNotification } from "./OrderSidebarContext";
 
 type OrderRightPanelProps = {
   selectedOrder: Order | null;
   onClose: () => void;
   onResetSelection: () => void;
   purchaseOptions: PurchaseOption[];
+  notification: SidebarNotification;
 };
 
-export default function OrderRightPanel({ selectedOrder, onClose, onResetSelection, purchaseOptions }: OrderRightPanelProps) {
+export default function OrderRightPanel({ selectedOrder, onClose, onResetSelection, purchaseOptions, notification }: OrderRightPanelProps) {
   const pathname = usePathname();
   const currentPageFormType = getCurrentPageFormType(pathname);
   const visibleSelectedOrder = (selectedOrder?.detailType ?? "purchase") === currentPageFormType ? selectedOrder : null;
@@ -26,6 +28,7 @@ export default function OrderRightPanel({ selectedOrder, onClose, onResetSelecti
       <div className="h-full w-full overflow-hidden bg-[#f6f7f9] md:w-[420px]">
         <OrderUnifiedDetailDrawer
           category={getDrawerCategory(pathname)}
+          externalNotification={notification}
           onClose={onClose}
           selectedItem={visibleSelectedOrder}
           processEditable={pathname === "/product-processes" || pathname === "/process-histories"}
@@ -37,9 +40,21 @@ export default function OrderRightPanel({ selectedOrder, onClose, onResetSelecti
 }
 
 function getDrawerCategory(pathname: string): DrawerCategory {
+  if ([
+    "/labels",
+    "/qr-search",
+    "/order-purchase-histories",
+    "/histories",
+    "/shipments",
+    "/scan",
+    "/settings/users",
+    "/settings/permissions",
+  ].includes(pathname)) {
+    return DrawerCategory.DISABLED;
+  }
   if (pathname === "/production-orders") return DrawerCategory.PRODUCTION;
   if (pathname === "/product-processes") return DrawerCategory.PROCESS_OVERVIEW;
-  if (pathname === "/process-histories" || pathname === "/shipments") return DrawerCategory.PRODUCT;
+  if (pathname === "/process-histories") return DrawerCategory.PRODUCT;
   return DrawerCategory.PURCHASE;
 }
 

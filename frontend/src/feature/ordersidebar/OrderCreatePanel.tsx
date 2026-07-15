@@ -4,6 +4,10 @@ import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import OrderPurchaseFormCard from "./OrderPurchaseFormCard";
 import type { OrderPurchaseForm } from "./OrderPurchaseFormCard";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import InlineNotice from "../common/InlineNotice";
+import SavingButtonContent from "../common/SavingButtonContent";
 
 type OrderCreatePanelProps = {
   onCancel: () => void;
@@ -27,8 +31,6 @@ type OrderPurchaseResponse = {
   status: string | null;
   note: string | null;
 };
-
-const orderApiUrl = process.env.NEXT_PUBLIC_ORDER_API_URL ?? "http://localhost:8080/order/post";
 
 const text = {
   cancel: "\ucde8\uc18c",
@@ -69,7 +71,7 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
     setSubmitMessage("");
 
     try {
-      const response = await fetch(orderApiUrl, {
+      const response = await apiClient(orderEndpoints.create, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -86,7 +88,7 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
       });
 
       if (!response.ok) {
-        throw new Error(text.saveError);
+        throw new Error(await getApiErrorMessage(response, text.saveError));
       }
 
       const result = (await response.json()) as ApiResponse<OrderPurchaseResponse>;
@@ -118,7 +120,7 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
           disabled={submitStatus === "saving"}
           type="submit"
         >
-          {submitStatus === "saving" ? text.submitting : text.submit}
+          <SavingButtonContent idleText={text.submit} isSaving={submitStatus === "saving"} savingText={text.submitting} />
         </button>
         <button
           className="h-7 flex-1 rounded-md border border-slate-200 bg-white text-xs font-bold text-slate-500"
@@ -129,11 +131,7 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
         </button>
       </div>
 
-      {submitMessage && (
-        <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
-          {submitMessage}
-        </p>
-      )}
+      <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
     </form>
   );
 }

@@ -1,3 +1,6 @@
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+
 export type ProcessStatus = "PURCHASESUBMIT" | "INSTRUCTION" | "ASSEMBLY" | "TEST" | "FINAL_INSPECTION" | "PACKAGING" | "WAITING_FOR_SHIPMENT";
 
 export type PurchaseDetail = {
@@ -13,36 +16,34 @@ export type ProductDetail = {
 };
 
 type ApiResponse<T> = { success: boolean; message: string; data: T };
-const baseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
-
 async function request<T>(url: string, init?: RequestInit) {
-  const response = await fetch(url, { cache: "no-store", ...init });
+  const response = await apiClient(url, { cache: "no-store", ...init });
   const result = (await response.json()) as ApiResponse<T>;
   if (!response.ok || !result.success) throw new Error(result.message || "요청을 처리하지 못했습니다.");
   return result.data;
 }
 
 export const updatePurchaseDetail = (id: number, body: object) =>
-  request<PurchaseDetail>(`${baseUrl}/${id}`, {
+  request<PurchaseDetail>(orderEndpoints.detail(id), {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
 
 export const updateProductProcess = (productQr: string, body: { processName: ProcessStatus | null; isDefect: boolean }) =>
-  request<ProductDetail>(`${baseUrl}/product-processes/${encodeURIComponent(productQr)}`, {
+  request<ProductDetail>(orderEndpoints.productProcess(productQr), {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
 
 export const updateProductionProcesses = (purchaseId: string, processName: ProcessStatus) =>
-  request<ProductDetail[]>(`${baseUrl}/product-processes/by-production/${encodeURIComponent(purchaseId)}`, {
+  request<ProductDetail[]>(orderEndpoints.productProcessesByProduction(purchaseId), {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ processName }),
   });
 
 export async function deletePurchase(id: number) {
-  const response = await fetch(`${baseUrl}/${id}`, { method: "DELETE" });
-  if (!response.ok) throw new Error("발주서를 삭제하지 못했습니다.");
+  const response = await apiClient(orderEndpoints.detail(id), { method: "DELETE" });
+  if (!response.ok) throw new Error(await getApiErrorMessage(response, "발주서를 삭제하지 못했습니다."));
 }
 
 export async function deleteProduct(productQr: string) {
-  const response = await fetch(`${baseUrl}/product-processes/${encodeURIComponent(productQr)}`, { method: "DELETE" });
-  if (!response.ok) throw new Error("제품을 삭제하지 못했습니다.");
+  const response = await apiClient(orderEndpoints.productProcess(productQr), { method: "DELETE" });
+  if (!response.ok) throw new Error(await getApiErrorMessage(response, "제품을 삭제하지 못했습니다."));
 }

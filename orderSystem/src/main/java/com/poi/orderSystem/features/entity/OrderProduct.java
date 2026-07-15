@@ -12,6 +12,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PostLoad;
@@ -22,7 +23,11 @@ import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
 @Entity
-@Table(name = "OrderProduct")
+@Table(name = "OrderProduct", indexes = {
+		@Index(name = "idx_order_product_production_id", columnList = "production_id"),
+		@Index(name = "idx_order_product_created_time", columnList = "created_time"),
+		@Index(name = "idx_order_product_process_created_time", columnList = "process, created_time")
+})
 @Getter
 @Setter
 public class OrderProduct implements Persistable<String> {
@@ -40,6 +45,7 @@ public class OrderProduct implements Persistable<String> {
 	private ProcessStatus process;
 
 	private LocalDateTime createdTime;
+	private LocalDateTime packingCompletedTime;
 
 	@Transient
 	private boolean newEntity = true;

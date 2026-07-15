@@ -11,7 +11,7 @@ export type Order = {
   detailType?: "purchase" | "production" | "process" | "shipment" | "label" | "history";
   orderNo: string;
   orderDate: string;
-  historyId?: number;
+  historyId?: string | number;
   productionOrderNo?: string;
   productionOrderId?: string;
   customer: string;

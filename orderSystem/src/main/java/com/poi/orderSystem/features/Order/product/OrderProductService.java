@@ -1,9 +1,13 @@
 package com.poi.orderSystem.features.Order.product;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
@@ -14,15 +18,14 @@ import com.poi.orderSystem.features.DTO.OrderProductProcessRequest;
 import com.poi.orderSystem.features.DTO.OrderProductProcessResponse;
 import com.poi.orderSystem.features.DTO.OrderShipmentResponse;
 import com.poi.orderSystem.features.Order.purChase.OrderPurChaseService;
-import com.poi.orderSystem.features.entity.OrderHistory;
 import com.poi.orderSystem.features.entity.OrderProduct;
+import com.poi.orderSystem.features.entity.OrderProductHistory;
 import com.poi.orderSystem.features.entity.OrderProduction;
 import com.poi.orderSystem.features.entity.OrderPurchase;
-import com.poi.orderSystem.features.repository.OrderHistoryRepository;
+import com.poi.orderSystem.features.repository.OrderProductHistoryRepository;
 import com.poi.orderSystem.features.repository.OrderProductRepository;
 import com.poi.orderSystem.features.repository.OrderProductionRepository;
 import com.poi.orderSystem.features.repository.OrderPurchaseRepository;
-import com.poi.orderSystem.features.util.EnumUtil.HistoryStatus;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import lombok.RequiredArgsConstructor;
@@ -33,7 +36,7 @@ public class OrderProductService {
 	private final OrderProductRepository orderProductRepository;
 	private final OrderProductionRepository orderProductionRepository;
 	private final OrderPurchaseRepository orderPurchaseRepository;
-	private final OrderHistoryRepository orderHistoryRepository;
+	private final OrderProductHistoryRepository orderProductHistoryRepository;
 	private final OrderPurChaseService orderPurChaseService;
 
 	@Transactional
@@ -45,10 +48,9 @@ public class OrderProductService {
 
 		applyProductProcessRequest(product, request);
 
-		OrderProduct savedProduct = orderProductRepository.save(product);
-		syncPurchaseStatusByProducts(savedProduct);
+		syncPurchaseStatusByProducts(product);
 
-		return OrderProductProcessResponse.from(savedProduct);
+		return OrderProductProcessResponse.from(product);
 	}
 
 	@Transactional
@@ -62,14 +64,21 @@ public class OrderProductService {
 			throw new IllegalArgumentException("변경할 공정 상태가 필요합니다.");
 		}
 
+		LocalDateTime packingCompletedTime = request.getProcessName() == ProcessStatus.PACKAGING
+				? currentMinute()
+				: null;
 		for (OrderProduct product : products) {
-			product.setProcess(request.getProcessName());
+			if (product.getProcess() != request.getProcessName()) {
+				product.setProcess(request.getProcessName());
+				if (packingCompletedTime != null) {
+					product.setPackingCompletedTime(packingCompletedTime);
+				}
+			}
 		}
 
-		List<OrderProduct> savedProducts = orderProductRepository.saveAll(products);
 		updatePurchaseStatus(purchaseId, request.getProcessName());
 
-		return savedProducts.stream().map(OrderProductProcessResponse::from).toList();
+		return products.stream().map(OrderProductProcessResponse::from).toList();
 	}
 
 	@Transactional(readOnly = true)
@@ -87,10 +96,17 @@ public class OrderProductService {
 
 	@Transactional(readOnly = true)
 	public List<OrderShipmentResponse> findShipments() {
-		return orderProductRepository
+		return new ArrayList<>(orderProductRepository
 				.findByProcessInWithProductionAndPurchaseOrderByCreatedTimeDesc(
 						List.of(ProcessStatus.PACKAGING))
-				.stream().map(OrderShipmentResponse::from).toList();
+				.stream()
+				.collect(java.util.stream.Collectors.groupingBy(
+						product -> product.getProduction().getPurchaseId(),
+						java.util.LinkedHashMap::new,
+						java.util.stream.Collectors.toList()))
+				.values()).stream()
+				.map(OrderShipmentResponse::from)
+				.toList();
 	}
 
 	@Transactional
@@ -102,11 +118,10 @@ public class OrderProductService {
 		}
 
 		product.setProcess(ProcessStatus.WAITING_FOR_SHIPMENT);
-		OrderProduct savedProduct = orderProductRepository.saveAndFlush(product);
-		syncPurchaseStatusByProducts(savedProduct);
+		syncPurchaseStatusByProducts(product);
 
-		OrderShipmentResponse response = OrderShipmentResponse.from(savedProduct);
-		removeCompletedOrderIfReady(savedProduct);
+		OrderShipmentResponse response = OrderShipmentResponse.from(product);
+		removeCompletedOrderIfReady(product);
 
 		return response;
 	}
@@ -115,26 +130,28 @@ public class OrderProductService {
 	public List<OrderShipmentResponse> completeShipments(List<String> productQrs) {
 		List<OrderProduct> completedProducts = new ArrayList<>();
 		Set<String> purchaseIds = new LinkedHashSet<>();
+		Map<String, OrderProduct> productsByQr = new HashMap<>();
+		orderProductRepository.findAllByProductQrInWithProductionAndPurchase(productQrs)
+				.forEach(product -> productsByQr.put(product.getProductQr(), product));
 
 		for (String productQr : productQrs) {
-			OrderProduct product = orderProductRepository.findById(productQr).orElse(null);
+			OrderProduct product = productsByQr.get(productQr);
 
 			if (product == null) {
 				continue;
 			}
 
-			product.setProcess(ProcessStatus.WAITING_FOR_SHIPMENT);
-			OrderProduct savedProduct = orderProductRepository.save(product);
-			OrderProduction production = savedProduct.getProduction();
+			if (product.getProcess() != ProcessStatus.WAITING_FOR_SHIPMENT) {
+				product.setProcess(ProcessStatus.WAITING_FOR_SHIPMENT);
+			}
+			OrderProduction production = product.getProduction();
 
-			completedProducts.add(savedProduct);
+			completedProducts.add(product);
 
 			if (production != null && hasText(production.getPurchaseId())) {
 				purchaseIds.add(production.getPurchaseId());
 			}
 		}
-
-		orderProductRepository.flush();
 
 		purchaseIds.forEach(this::syncPurchaseStatusByPurchaseId);
 
@@ -167,26 +184,28 @@ public class OrderProductService {
 
 
 	private void applyProductProcessRequest(OrderProduct product, OrderProductProcessRequest request) {
-		if (request.getProcessName() != null) {
+		if (request.getProcessName() != null && product.getProcess() != request.getProcessName()) {
 			product.setProcess(request.getProcessName());
+			if (request.getProcessName() == ProcessStatus.PACKAGING) {
+				product.setPackingCompletedTime(currentMinute());
+			}
 		}
-		if (request.getIsDefect() != null) {
+		if (request.getIsDefect() != null && product.isDefect() != request.getIsDefect()) {
 			product.setDefect(request.getIsDefect());
 		}
 	}
 
 	private void saveCancelHistory(OrderProduct product) {
 		OrderProduction production = product.getProduction();
-		OrderHistory history = new OrderHistory();
-
+		if (production == null) return;
+		OrderProductHistory history = new OrderProductHistory();
 		history.setProductQr(product.getProductQr());
-		history.setProductionId(production == null ? null : production.getPurchaseId());
-		history.setProductName(production == null || production.getPurchase() == null
-				? null : production.getPurchase().getProductName());
-		history.setNote("제품 취소");
-		history.setStatus(HistoryStatus.CANCEL);
-
-		orderHistoryRepository.save(history);
+		history.setPurchaseId(production.getPurchaseId());
+		history.setProductName(production.getPurchase() == null ? null : production.getPurchase().getProductName());
+		history.setDefect(product.isDefect());
+		history.setProcess(ProcessStatus.CANCEL);
+		history.setCreatedTime(product.getCreatedTime());
+		orderProductHistoryRepository.save(history);
 	}
 
 	private void removeCompletedOrderIfReady(OrderProduct product) {
@@ -209,26 +228,57 @@ public class OrderProductService {
 				? orderPurchaseRepository.findByPurchaseId(purchaseId).orElse(null)
 				: production.getPurchase();
 
-		if (purchase == null || purchase.getQuantity() == null) {
+		if (purchase == null) {
 			return;
 		}
 
-		Long shippedCount = orderProductRepository.countByProductionPurchasePurchaseIdAndProcess(purchaseId,
-				ProcessStatus.WAITING_FOR_SHIPMENT);
+		List<OrderProduct> products = orderProductRepository.findByProductionPurchasePurchaseId(purchaseId);
 
-		if (shippedCount < purchase.getQuantity()) {
+		if (products.isEmpty() || products.stream()
+				.anyMatch(product -> product.getProcess() != ProcessStatus.WAITING_FOR_SHIPMENT)) {
 			return;
 		}
 
 		purchase.setStatus(ProcessStatus.WAITING_FOR_SHIPMENT);
 		orderPurchaseRepository.saveAndFlush(purchase);
 		orderPurChaseService.savePurchaseHistory(purchase);
+		saveCompletedProductHistories(products, production);
 
 		orderProductRepository.deleteByProductionPurchasePurchaseId(purchaseId);
 
 		if (production != null) orderProductionRepository.delete(production);
 
 		orderPurchaseRepository.deleteById(purchase.getId());
+	}
+
+	private void saveCompletedProductHistories(List<OrderProduct> products, OrderProduction production) {
+		if (production == null) {
+			return;
+		}
+
+		List<String> productQrs = products.stream().map(OrderProduct::getProductQr).toList();
+		Map<String, OrderProductHistory> historiesByQr = new HashMap<>();
+		orderProductHistoryRepository.findAllById(productQrs)
+				.forEach(history -> historiesByQr.put(history.getProductQr(), history));
+
+		List<OrderProductHistory> histories = products.stream()
+				.map(product -> {
+					OrderProductHistory history = historiesByQr.getOrDefault(
+							product.getProductQr(), new OrderProductHistory());
+					history.setProductQr(product.getProductQr());
+					history.setPurchaseId(production.getPurchaseId());
+					history.setProductName(production.getPurchase() == null ? null : production.getPurchase().getProductName());
+					history.setDefect(product.isDefect());
+					history.setProcess(product.getProcess());
+					return history;
+				})
+				.toList();
+
+		orderProductHistoryRepository.saveAll(histories);
+	}
+
+	private LocalDateTime currentMinute() {
+		return LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
 	}
 
 

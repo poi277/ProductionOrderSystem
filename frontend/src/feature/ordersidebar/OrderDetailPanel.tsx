@@ -3,6 +3,9 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { Order } from "../order/OrdersTypes";
+import InlineNotice from "../common/InlineNotice";
+import DeleteConfirmDialog from "./DeleteConfirmDialog";
+import DetailActionButtons from "./DetailActionButtons";
 import OrderHistoryFormCard from "./OrderHistoryFormCard";
 import type { OrderHistoryForm } from "./OrderHistoryFormCard";
 import OrderLabelFormCard from "./OrderLabelFormCard";
@@ -15,6 +18,8 @@ import OrderPurchaseFormCard from "./OrderPurchaseFormCard";
 import type { OrderPurchaseForm } from "./OrderPurchaseFormCard";
 import OrderShipmentFormCard from "./OrderShipmentFormCard";
 import type { OrderShipmentForm } from "./OrderShipmentFormCard";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
 
 type OrderDetailPanelProps = {
   order: Order | null;
@@ -36,8 +41,6 @@ type OrderPurchaseResponse = {
   status: string | null;
   note: string | null;
 };
-
-const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
 
 const productProcessLabels: Record<string, string> = {
   PURCHASESUBMIT: "발주서 접수",
@@ -292,7 +295,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitMessage("");
 
       try {
-        const response = await fetch(`${orderApiBaseUrl}/labels/${encodeURIComponent(order.qrData ?? order.productQr ?? "")}`, {
+        const response = await apiClient(orderEndpoints.label(order.qrData ?? order.productQr ?? ""), {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -301,7 +304,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         });
 
         if (!response.ok) {
-          throw new Error("라벨 수정에 실패했습니다.");
+          throw new Error(await getApiErrorMessage(response, "라벨 수정에 실패했습니다."));
         }
 
         setSubmitStatus("success");
@@ -328,12 +331,12 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitMessage("");
 
       try {
-        const response = await fetch(`${orderApiBaseUrl}/labels/${encodeURIComponent(order.qrData ?? order.productQr ?? "")}`, {
+        const response = await apiClient(orderEndpoints.label(order.qrData ?? order.productQr ?? ""), {
           method: "DELETE",
         });
 
         if (!response.ok) {
-          throw new Error("라벨 삭제에 실패했습니다.");
+          throw new Error(await getApiErrorMessage(response, "라벨 삭제에 실패했습니다."));
         }
 
         setSubmitStatus("success");
@@ -356,29 +359,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           onChange={updateLabelForm}
         />
 
-        <div className="flex gap-2">
-          <button
-            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
-            disabled={submitStatus === "saving" || (isEditing && !hasLabelChanges)}
-            type="submit"
-          >
-            {isEditing ? text.updateComplete : text.update}
-          </button>
-          <button
-            className="h-8 flex-1 rounded-md border border-red-100 bg-white text-xs font-bold text-red-600 disabled:text-slate-300"
-            disabled={submitStatus === "saving"}
-            onClick={() => setIsDeleteConfirmOpen(true)}
-            type="button"
-          >
-            {text.delete}
-          </button>
-        </div>
+        <DetailActionButtons deleteText={text.delete} isSaving={submitStatus === "saving"} onDelete={() => setIsDeleteConfirmOpen(true)} saveDisabled={isEditing && !hasLabelChanges} saveText={isEditing ? text.updateComplete : text.update} />
 
-        {submitMessage && (
-          <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
-            {submitMessage}
-          </p>
-        )}
+        <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
 
         <DeleteConfirmDialog
           disabled={submitStatus === "saving"}
@@ -418,7 +401,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitMessage("");
 
       try {
-        const response = await fetch(`${orderApiBaseUrl}/histories/${order.historyId}`, {
+        const response = await apiClient(orderEndpoints.history(order.historyId), {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -427,16 +410,16 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         });
 
         if (!response.ok) {
-          throw new Error("이력 수정에 실패했습니다.");
+          throw new Error(await getApiErrorMessage(response, "이력 수정에 실패했습니다."));
         }
 
         setSubmitStatus("success");
         setSubmitMessage("이력이 수정되었습니다.");
         setIsEditing(false);
         window.dispatchEvent(
-          new CustomEvent<{ historyId: number; order: OrderHistoryForm }>("history-updated", {
+          new CustomEvent<{ historyId: string; order: OrderHistoryForm }>("history-updated", {
             detail: {
-              historyId: order.id,
+              historyId: String(order.historyId),
               order: historyForm,
             },
           }),
@@ -458,18 +441,18 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitMessage("");
 
       try {
-        const response = await fetch(`${orderApiBaseUrl}/histories/${order.historyId}`, {
+        const response = await apiClient(orderEndpoints.history(order.historyId), {
           method: "DELETE",
         });
 
         if (!response.ok) {
-          throw new Error("이력 삭제에 실패했습니다.");
+          throw new Error(await getApiErrorMessage(response, "이력 삭제에 실패했습니다."));
         }
 
         setSubmitStatus("success");
         setSubmitMessage("이력이 삭제되었습니다.");
         setIsDeleteConfirmOpen(false);
-        window.dispatchEvent(new CustomEvent<number>("history-deleted", { detail: order.id }));
+        window.dispatchEvent(new CustomEvent<string>("history-deleted", { detail: String(order.historyId) }));
       } catch (error) {
         setSubmitStatus("error");
         setSubmitMessage(error instanceof Error ? error.message : "이력 삭제 중 오류가 발생했습니다.");
@@ -487,29 +470,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           title=""
         />
 
-        <div className="flex gap-2">
-          <button
-            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
-            disabled={submitStatus === "saving" || (isEditing && !hasHistoryChanges)}
-            type="submit"
-          >
-            {isEditing ? text.updateComplete : text.update}
-          </button>
-          <button
-            className="h-8 flex-1 rounded-md border border-red-100 bg-white text-xs font-bold text-red-600 disabled:text-slate-300"
-            disabled={submitStatus === "saving"}
-            onClick={() => setIsDeleteConfirmOpen(true)}
-            type="button"
-          >
-            {text.delete}
-          </button>
-        </div>
+        <DetailActionButtons deleteText={text.delete} isSaving={submitStatus === "saving"} onDelete={() => setIsDeleteConfirmOpen(true)} saveDisabled={isEditing && !hasHistoryChanges} saveText={isEditing ? text.updateComplete : text.update} />
 
-        {submitMessage && (
-          <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
-            {submitMessage}
-          </p>
-        )}
+        <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
 
         <DeleteConfirmDialog
           disabled={submitStatus === "saving"}
@@ -549,7 +512,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitMessage("");
 
       try {
-        const response = await fetch(`${orderApiBaseUrl}/shipments/${encodeURIComponent(order.productProcessNo ?? "")}`, {
+        const response = await apiClient(orderEndpoints.shipment(order.productProcessNo ?? ""), {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -558,7 +521,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         });
 
         if (!response.ok) {
-          throw new Error("납품출하 수정에 실패했습니다.");
+          throw new Error(await getApiErrorMessage(response, "납품출하 수정에 실패했습니다."));
         }
 
         setSubmitStatus("success");
@@ -583,12 +546,12 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitMessage("");
 
       try {
-        const response = await fetch(`${orderApiBaseUrl}/shipments/${encodeURIComponent(order.productProcessNo ?? "")}`, {
+        const response = await apiClient(orderEndpoints.shipment(order.productProcessNo ?? ""), {
           method: "DELETE",
         });
 
         if (!response.ok) {
-          throw new Error("납품출하 삭제에 실패했습니다.");
+          throw new Error(await getApiErrorMessage(response, "납품출하 삭제에 실패했습니다."));
         }
 
         setSubmitStatus("success");
@@ -610,29 +573,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           title=""
         />
 
-        <div className="flex gap-2">
-          <button
-            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
-            disabled={submitStatus === "saving" || (isEditing && !hasShipmentChanges)}
-            type="submit"
-          >
-            {isEditing ? text.updateComplete : text.update}
-          </button>
-          <button
-            className="h-8 flex-1 rounded-md border border-red-100 bg-white text-xs font-bold text-red-600 disabled:text-slate-300"
-            disabled={submitStatus === "saving"}
-            onClick={() => setIsDeleteConfirmOpen(true)}
-            type="button"
-          >
-            {text.delete}
-          </button>
-        </div>
+        <DetailActionButtons deleteText={text.delete} isSaving={submitStatus === "saving"} onDelete={() => setIsDeleteConfirmOpen(true)} saveDisabled={isEditing && !hasShipmentChanges} saveText={isEditing ? text.updateComplete : text.update} />
 
-        {submitMessage && (
-          <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
-            {submitMessage}
-          </p>
-        )}
+        <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
 
         <DeleteConfirmDialog
           disabled={submitStatus === "saving"}
@@ -673,9 +616,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
       try {
         const updateUrl = order.processUpdateScope === "product"
-          ? `${orderApiBaseUrl}/product-processes/${encodeURIComponent(order.productQr ?? "")}`
-          : `${orderApiBaseUrl}/product-processes/by-production/${encodeURIComponent(processForm.productionOrderNo)}`;
-        const response = await fetch(updateUrl, {
+          ? orderEndpoints.productProcess(order.productQr ?? "")
+          : orderEndpoints.productProcessesByProduction(processForm.productionOrderNo);
+        const response = await apiClient(updateUrl, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -684,7 +627,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         });
 
         if (!response.ok) {
-          throw new Error("생산현황 수정에 실패했습니다.");
+          throw new Error(await getApiErrorMessage(response, "생산현황 수정에 실패했습니다."));
         }
 
         setSubmitStatus("success");
@@ -712,12 +655,12 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitMessage("");
 
       try {
-        const response = await fetch(`${orderApiBaseUrl}/product-processes/${encodeURIComponent(order.productQr ?? "")}`, {
+        const response = await apiClient(orderEndpoints.productProcess(order.productQr ?? ""), {
           method: "DELETE",
         });
 
         if (!response.ok) {
-          throw new Error("생산현황 삭제에 실패했습니다.");
+          throw new Error(await getApiErrorMessage(response, "생산현황 삭제에 실패했습니다."));
         }
 
         setSubmitStatus("success");
@@ -739,31 +682,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           title=""
         />
 
-        <div className="flex gap-2">
-          <button
-            className={`h-8 flex-1 rounded-md text-xs font-bold text-white disabled:bg-slate-300 ${
-              order.processUpdateScope === "product" ? "bg-gray-500" : "bg-black"
-            }`}
-            disabled={submitStatus === "saving" || (isEditing && !hasProcessChanges)}
-            type="submit"
-          >
-            {isEditing ? text.updateComplete : text.update}
-          </button>
-          <button
-            className="h-8 flex-1 rounded-md border border-red-100 bg-white text-xs font-bold text-red-600 disabled:text-slate-300"
-            disabled={submitStatus === "saving"}
-            onClick={() => setIsDeleteConfirmOpen(true)}
-            type="button"
-          >
-            {text.delete}
-          </button>
-        </div>
+        <DetailActionButtons deleteText={text.delete} isSaving={submitStatus === "saving"} onDelete={() => setIsDeleteConfirmOpen(true)} saveClassName={`h-8 flex-1 rounded-md text-xs font-bold text-white disabled:bg-slate-300 ${order.processUpdateScope === "product" ? "bg-gray-500" : "bg-black"}`} saveDisabled={isEditing && !hasProcessChanges} saveText={isEditing ? text.updateComplete : text.update} />
 
-        {submitMessage && (
-          <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
-            {submitMessage}
-          </p>
-        )}
+        <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
 
         <DeleteConfirmDialog
           disabled={submitStatus === "saving"}
@@ -831,29 +752,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           title=""
         />
 
-        <div className="flex gap-2">
-          <button
-            className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
-            disabled={submitStatus === "saving" || (isEditing && !hasProductionChanges)}
-            type="submit"
-          >
-            {isEditing ? text.updateComplete : text.update}
-          </button>
-          <button
-            className="h-8 flex-1 rounded-md border border-red-100 bg-white text-xs font-bold text-red-600 disabled:text-slate-300"
-            disabled={submitStatus === "saving"}
-            onClick={() => setIsDeleteConfirmOpen(true)}
-            type="button"
-          >
-            {text.delete}
-          </button>
-        </div>
+        <DetailActionButtons deleteText={text.delete} isSaving={submitStatus === "saving"} onDelete={() => setIsDeleteConfirmOpen(true)} saveDisabled={isEditing && !hasProductionChanges} saveText={isEditing ? text.updateComplete : text.update} />
 
-        {submitMessage && (
-          <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
-            {submitMessage}
-          </p>
-        )}
+        <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
 
         <DeleteConfirmDialog
           disabled={submitStatus === "saving"}
@@ -889,7 +790,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
     setSubmitMessage("");
 
     try {
-      const response = await fetch(`${orderApiBaseUrl}/${encodeURIComponent(order.orderNo)}`, {
+      const response = await apiClient(orderEndpoints.detail(order.orderNo), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -906,7 +807,7 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       });
 
       if (!response.ok) {
-        throw new Error(text.saveError);
+        throw new Error(await getApiErrorMessage(response, text.saveError));
       }
 
       const result = (await response.json()) as ApiResponse<OrderPurchaseResponse>;
@@ -932,12 +833,12 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
     setSubmitMessage("");
 
     try {
-      const response = await fetch(`${orderApiBaseUrl}/${encodeURIComponent(order.orderNo)}`, {
+      const response = await apiClient(orderEndpoints.detail(order.orderNo), {
         method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error(text.deleteError);
+        throw new Error(await getApiErrorMessage(response, text.deleteError));
       }
 
       setSubmitStatus("success");
@@ -963,29 +864,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         title=""
       />
 
-      <div className="flex gap-2">
-        <button
-          className="h-8 flex-1 rounded-md bg-black text-xs font-bold text-white disabled:bg-slate-300"
-          disabled={submitStatus === "saving" || (isEditing && !hasChanges)}
-          type="submit"
-        >
-          {submitStatus === "saving" ? text.updating : isEditing ? text.updateComplete : text.update}
-        </button>
-        <button
-          className="h-8 flex-1 rounded-md border border-red-100 bg-white text-xs font-bold text-red-600 disabled:text-slate-300"
-          disabled={submitStatus === "saving"}
-          onClick={() => setIsDeleteConfirmOpen(true)}
-          type="button"
-        >
-          {text.delete}
-        </button>
-      </div>
+      <DetailActionButtons deleteText={text.delete} isSaving={submitStatus === "saving"} onDelete={() => setIsDeleteConfirmOpen(true)} saveDisabled={isEditing && !hasChanges} saveText={isEditing ? text.updateComplete : text.update} savingText={text.updating} />
 
-      {submitMessage && (
-        <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
-          {submitMessage}
-        </p>
-      )}
+      <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
 
       <DeleteConfirmDialog
         disabled={submitStatus === "saving"}
@@ -1012,48 +893,4 @@ function toPurchaseStatus(status: string) {
     default:
       return status;
   }
-}
-
-function DeleteConfirmDialog({
-  disabled,
-  isOpen,
-  onCancel,
-  onConfirm,
-}: {
-  disabled: boolean;
-  isOpen: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  if (!isOpen) {
-    return null;
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4" onClick={onCancel}>
-      <div
-        className="w-full max-w-[280px] rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <p className="text-sm font-bold text-slate-900">{text.deleteConfirm}</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            className="h-8 rounded-md bg-red-600 text-xs font-bold text-white disabled:bg-slate-300"
-            disabled={disabled}
-            onClick={onConfirm}
-            type="button"
-          >
-            {text.yes}
-          </button>
-          <button
-            className="h-8 rounded-md border border-slate-200 bg-white text-xs font-bold text-slate-600"
-            onClick={onCancel}
-            type="button"
-          >
-            {text.no}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }

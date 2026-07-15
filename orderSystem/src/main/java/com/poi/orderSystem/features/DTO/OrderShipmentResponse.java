@@ -1,5 +1,9 @@
 package com.poi.orderSystem.features.DTO;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
+
 import com.poi.orderSystem.features.entity.OrderProduct;
 import com.poi.orderSystem.features.entity.OrderProduction;
 import com.poi.orderSystem.features.entity.OrderPurchase;
@@ -14,10 +18,12 @@ public class OrderShipmentResponse {
 	private final Long purchaseDbId;
 	private final String shipmentId;
 	private final String productQr;
+	private final List<String> productQrs;
 	private final String productName;
 	private final String productionId;
 	private final String customer;
 	private final Integer quantity;
+	private final Integer packedQuantity;
 	private final String lot;
 	private final String productProcessNo;
 	private final String processName;
@@ -34,26 +40,34 @@ public class OrderShipmentResponse {
 	private final ProcessStatus process;
 	private final Boolean isDefect;
 
-	private OrderShipmentResponse(OrderProduct product) {
+	private OrderShipmentResponse(List<OrderProduct> products) {
+		OrderProduct product = products.get(0);
 		OrderProduction production = product.getProduction();
 		OrderPurchase purchase = production == null ? null : production.getPurchase();
 		ProcessStatus process = product.getProcess();
+		LocalDateTime latestPackingTime = products.stream()
+				.map(item -> item.getPackingCompletedTime() == null ? item.getCreatedTime() : item.getPackingCompletedTime())
+				.filter(time -> time != null)
+				.max(Comparator.naturalOrder())
+				.orElse(null);
 
-		this.shipmentId = product.getProductQr();
+		this.shipmentId = purchase == null ? product.getProductQr() : purchase.getPurchaseId();
 		this.productionDbId = production == null ? null : production.getId();
 		this.purchaseDbId = purchase == null ? null : purchase.getId();
 		this.productQr = product.getProductQr();
+		this.productQrs = products.stream().map(OrderProduct::getProductQr).toList();
 		this.productName = purchase == null ? null : purchase.getProductName();
 		this.productionId = production == null ? null : production.getPurchaseId();
 		this.customer = purchase == null ? null : purchase.getCustomer();
-		this.quantity = 1;
+		this.quantity = purchase == null ? null : purchase.getQuantity();
+		this.packedQuantity = products.size();
 		this.lot = production == null ? null : production.getLot();
 		this.productProcessNo = product.getProductQr();
 		this.processName = process == null ? null : process.getLabel();
 		this.shippedAt = null;
 		this.memo = production == null ? null : production.getLot();
-		this.createdAt = product.getCreatedTime() == null ? null : product.getCreatedTime().toString();
-		this.updatedAt = null;
+		this.createdAt = latestPackingTime == null ? null : latestPackingTime.toString();
+		this.updatedAt = this.createdAt;
 		this.price = purchase == null ? null : purchase.getPrice();
 		this.dueDate = purchase == null ? null : purchase.getDueDate();
 		this.purchaseStatus = purchase == null ? null : purchase.getStatus();
@@ -64,7 +78,11 @@ public class OrderShipmentResponse {
 		this.isDefect = product.isDefect();
 	}
 
+	public static OrderShipmentResponse from(List<OrderProduct> products) {
+		return new OrderShipmentResponse(products);
+	}
+
 	public static OrderShipmentResponse from(OrderProduct product) {
-		return new OrderShipmentResponse(product);
+		return new OrderShipmentResponse(List.of(product));
 	}
 }

@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataListTable from "../common/DataListTable";
 import { formatKoreanDateTimeWithoutYear } from "../common/dateFormat";
 import ListToolbar from "../common/ListToolbar";
 import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import { useApiMutationRevision } from "../../../util/apiMutationStore";
 import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
+import { compareNumericText, matchesSearch, sortByConditions, updateSortConditions } from "../common/listDataUtils";
+import { useRowSelection } from "../common/useRowSelection";
 import type { Order } from "../order/OrdersTypes";
 import type { OrderShipmentForm } from "../ordersidebar/OrderShipmentFormCard";
 
@@ -19,8 +24,10 @@ type Shipment = {
   productionOrderNo: string;
   productName: string;
   quantity: string;
+  packedQuantity: string;
   lotNo: string;
   productQr: string;
+  productQrs: string[];
   productProcessNo: string;
   processName: string;
   judgment: string;
@@ -43,10 +50,12 @@ type ShipmentResponse = {
   productionDbId: number | null;
   shipmentId: string;
   productQr: string | null;
+  productQrs: string[] | null;
   productName: string | null;
   productionId: string | null;
   customer: string | null;
   quantity: number | null;
+  packedQuantity: number | null;
   lot: string | null;
   productProcessNo: string | null;
   processName: string | null;
@@ -70,8 +79,6 @@ type ApiResponse<T> = {
   data: T;
 };
 
-const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
-
 type SortKey = keyof Omit<Shipment, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
@@ -79,11 +86,8 @@ const sortButtons: ListOption<SortKey>[] = [
   { label: "고객사", key: "customer" },
   { label: "품명", key: "productName" },
   { label: "발주수량", key: "quantity" },
+  { label: "포장수량", key: "packedQuantity" },
   { label: "Lot No.", key: "lotNo" },
-  { label: "제품QR", key: "productQr" },
-  { label: "공정순서", key: "processName" },
-  { label: "판정", key: "judgment" },
-  { label: "완료시간", key: "completedAt" },
 ];
 
 const shipmentColumns: DataListColumn<Shipment>[] = [
@@ -92,30 +96,28 @@ const shipmentColumns: DataListColumn<Shipment>[] = [
   { align: "center", header: "고객사", key: "customer", render: (row) => row.customer },
   { header: "품명", key: "productName", render: (row) => row.productName },
   { align: "center", header: "발주수량", key: "quantity", render: (row) => row.quantity },
+  { align: "center", header: "포장수량", key: "packedQuantity", render: (row) => row.packedQuantity },
   { align: "center", header: "Lot No.", key: "lotNo", render: (row) => row.lotNo },
-  { align: "center", header: "제품QR", key: "productQr", render: (row) => row.productQr },
-  { align: "center", header: "공정순서", key: "processName", render: (row) => row.processName },
-  { align: "center", header: "판정", key: "judgment", render: (row) => row.judgment },
-  { align: "center", header: "완료시간", key: "completedAt", render: (row) => row.completedAt },
 ];
 
 export default function ShipmentsPage() {
+  const mutationRevision = useApiMutationRevision();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loadError, setLoadError] = useState("");
   const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
-  const [checkedRowIds, setCheckedRowIds] = useState<number[]>([]);
+  const { selectedIds: checkedRowIds, setSelectedIds: setCheckedRowIds, toggleOne: toggleRowCheckbox } = useRowSelection<number>();
   const [sortConditions, setSortConditions] = useState<SortCondition<SortKey>[]>([]);
-  const [searchField, setSearchField] = useState<SortKey>("productQr");
+  const [searchField, setSearchField] = useState<SortKey>("productionOrderNo");
   const [searchText, setSearchText] = useState("");
   const { closeOrderSidebar, openOrderDetailSidebar } = useOrderSidebar();
 
   useEffect(() => {
     const loadShipments = async () => {
       try {
-        const response = await fetch(`${orderApiBaseUrl}/shipments`);
+        const response = await apiClient(orderEndpoints.shipments);
 
         if (!response.ok) {
-          setLoadError("검수/포장 목록을 불러오지 못했습니다.");
+          setLoadError(await getApiErrorMessage(response, "검수/포장 목록을 불러오지 못했습니다."));
           setShipments([]);
           return;
         }
@@ -130,7 +132,7 @@ export default function ShipmentsPage() {
     };
 
     void loadShipments();
-  }, []);
+  }, [mutationRevision]);
 
   useEffect(() => {
     const handleCreate = (event: Event) => {
@@ -174,16 +176,17 @@ export default function ShipmentsPage() {
     };
   }, [closeOrderSidebar]);
 
-  const searchOptions = Array.from(new Set(shipments.map((row) => String(row[searchField]))));
-  const filteredRows = shipments.filter((row) =>
-    String(row[searchField]).toLowerCase().includes(searchText.toLowerCase()),
+  const searchOptions = useMemo(
+    () => Array.from(new Set(shipments.map((row) => String(row[searchField])))),
+    [shipments, searchField],
   );
-  const sortedRows = sortRows(filteredRows, sortConditions);
+  const sortedRows = useMemo(() => {
+    const filteredRows = shipments.filter((row) => matchesSearch(row[searchField], searchText));
+    return sortByConditions(filteredRows, sortConditions, (row, key) => row[key], compareNumericText);
+  }, [shipments, searchField, searchText, sortConditions]);
 
   const handleToggleCheckbox = (row: Shipment) => {
-    setCheckedRowIds((current) =>
-      current.includes(row.id) ? current.filter((rowId) => rowId !== row.id) : [...current, row.id],
-    );
+    toggleRowCheckbox(row.id);
   };
 
   const handleSelectRow = (row: Shipment) => {
@@ -199,15 +202,16 @@ export default function ShipmentsPage() {
     }
 
     const responses = await Promise.all(
-      selectedRows.map((row) =>
-        fetch(`${orderApiBaseUrl}/shipments/${encodeURIComponent(row.productQr)}`, {
+      selectedRows.flatMap((row) => row.productQrs).map((productQr) =>
+        apiClient(orderEndpoints.shipment(productQr), {
           method: "DELETE",
         }),
       ),
     );
 
-    if (responses.some((response) => !response.ok)) {
-      window.alert("선택한 검수/포장 삭제에 실패했습니다.");
+    const failedResponse = responses.find((response) => !response.ok);
+    if (failedResponse) {
+      window.alert(await getApiErrorMessage(failedResponse, "선택한 검수/포장 삭제에 실패했습니다."));
       return;
     }
 
@@ -228,16 +232,16 @@ export default function ShipmentsPage() {
       return;
     }
 
-    const response = await fetch(`${orderApiBaseUrl}/shipments/complete`, {
+    const response = await apiClient(orderEndpoints.completeShipments, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(selectedRows.map((row) => row.productQr)),
+      body: JSON.stringify(selectedRows.flatMap((row) => row.productQrs)),
     });
 
     if (!response.ok) {
-      window.alert("선택한 출하 처리에 실패했습니다.");
+      window.alert(await getApiErrorMessage(response, "선택한 출하 처리에 실패했습니다."));
       return;
     }
 
@@ -256,16 +260,16 @@ export default function ShipmentsPage() {
       return;
     }
 
-    const response = await fetch(`${orderApiBaseUrl}/shipments/complete`, {
+    const response = await apiClient(orderEndpoints.completeShipments, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(shipments.map((row) => row.productQr)),
+      body: JSON.stringify(shipments.flatMap((row) => row.productQrs)),
     });
 
     if (!response.ok) {
-      window.alert("전체 출하 처리에 실패했습니다.");
+      window.alert(await getApiErrorMessage(response, "전체 출하 처리에 실패했습니다."));
       return;
     }
 
@@ -279,7 +283,7 @@ export default function ShipmentsPage() {
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">
       <section className="flex min-w-0 flex-1 flex-col px-5 py-5">
         <ListToolbar
-          categoryKey="process"
+          categoryKey="shipment"
           extraAction={{
             disabled: checkedRowIds.length === 0,
             label: "출하",
@@ -304,6 +308,10 @@ export default function ShipmentsPage() {
           sortConditions={sortConditions}
         />
         <DataListTable
+          categoryKey="shipment"
+          onColumnSort={(key) => setSortConditions((current) => updateSortConditions(current, key as SortKey))}
+          sortableColumnKeys={sortButtons.map((option) => option.key)}
+          sortConditions={sortConditions}
           checkedRowIds={checkedRowIds}
           columns={shipmentColumns}
           emptyMessage={loadError || "리스트가 비어있습니다."}
@@ -317,25 +325,6 @@ export default function ShipmentsPage() {
       </section>
     </main>
   );
-}
-
-function sortRows(rows: Shipment[], conditions: SortCondition<SortKey>[]) {
-  return [...rows].sort((a, b) => {
-    for (const condition of conditions) {
-      const result = String(a[condition.key]).localeCompare(String(b[condition.key]), "ko", { numeric: true });
-      if (result !== 0) return condition.direction === "asc" ? result : -result;
-    }
-    return 0;
-  });
-}
-
-function updateSortConditions(current: SortCondition<SortKey>[], key: SortKey) {
-  const existing = current.find((condition) => condition.key === key);
-  if (!existing) return [...current, { key, direction: "asc" as const }];
-  if (existing.direction === "asc") {
-    return current.map((condition) => (condition.key === key ? { ...condition, direction: "desc" as const } : condition));
-  }
-  return current.filter((condition) => condition.key !== key);
 }
 
 function toSidebarOrder(row: Shipment): Order {
@@ -379,8 +368,10 @@ function toShipmentRow(shipment: OrderShipmentForm, index: number): Shipment {
     productionOrderNo: shipment.productionOrderNo,
     productName: shipment.productQr,
     quantity: "1",
+    packedQuantity: "1",
     lotNo: shipment.memo || "-",
     productQr: shipment.productQr,
+    productQrs: [shipment.productQr],
     productProcessNo: shipment.productProcessNo,
     processName: shipment.processName,
     judgment: "-",
@@ -403,8 +394,10 @@ function toShipmentRowFromApi(shipment: ShipmentResponse, index: number): Shipme
     productionOrderNo: shipment.productionId ?? "-",
     productName: shipment.productName ?? "-",
     quantity: String(shipment.quantity ?? 1),
+    packedQuantity: String(shipment.packedQuantity ?? shipment.productQrs?.length ?? 0),
     lotNo: shipment.lot ?? shipment.memo ?? "-",
     productQr: shipment.productQr ?? "-",
+    productQrs: shipment.productQrs ?? (shipment.productQr ? [shipment.productQr] : []),
     productProcessNo: shipment.productProcessNo ?? shipment.shipmentId,
     processName: shipment.processName ?? "-",
     judgment: "-",

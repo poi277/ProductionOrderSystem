@@ -10,11 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 import com.poi.orderSystem.features.DTO.OrderPurchaseRequest;
 import com.poi.orderSystem.features.DTO.OrderPurchaseResponse;
 import com.poi.orderSystem.features.DTO.OrderPurchaseHistoryResponse;
+import com.poi.orderSystem.features.DTO.OrderPurchaseHistoryListResponse;
+import com.poi.orderSystem.features.DTO.OrderPurchaseHistoryListResponse.Source;
 import com.poi.orderSystem.features.entity.OrderProduction;
 import com.poi.orderSystem.features.entity.OrderPurchase;
 import com.poi.orderSystem.features.entity.OrderPurchaseHistory;
 import com.poi.orderSystem.features.repository.OrderProductionRepository;
 import com.poi.orderSystem.features.repository.OrderPurchaseHistoryRepository;
+import com.poi.orderSystem.features.repository.OrderProductHistoryRepository;
 import com.poi.orderSystem.features.repository.OrderPurchaseRepository;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
@@ -27,6 +30,7 @@ public class OrderPurChaseService {
 	private final OrderPurchaseRepository orderPurchaseRepository;
 	private final OrderProductionRepository orderProductionRepository;
 	private final OrderPurchaseHistoryRepository orderPurchaseHistoryRepository;
+	private final OrderProductHistoryRepository orderProductHistoryRepository;
 
 	@Transactional(readOnly = true)
 	public List<OrderPurchaseResponse> findPurchases() {
@@ -52,29 +56,45 @@ public class OrderPurChaseService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<Object> findDashboardOrders() {
-		List<Object> orders = new ArrayList<>();
+	public List<OrderPurchaseHistoryListResponse> findAllPurchaseHistories() {
+		List<OrderPurchaseHistoryListResponse> orders = new ArrayList<>();
 		orders.addAll(orderPurchaseRepository.findAllByOrderByCreatedTimeDesc().stream()
-				.map(OrderPurchaseResponse::from).toList());
+				.map(OrderPurchaseHistoryListResponse::from).toList());
 		orders.addAll(orderPurchaseHistoryRepository.findAllByOrderByCreatedTimeDesc().stream()
-				.map(OrderPurchaseHistoryResponse::from).toList());
+				.map(OrderPurchaseHistoryListResponse::from).toList());
 
 		return orders.stream()
-				.sorted(Comparator.comparing(this::getDueDate, Comparator.nullsLast(String::compareTo)))
-				.limit(30)
+				.sorted(Comparator.comparing(OrderPurchaseHistoryListResponse::getCreatedTime,
+						Comparator.nullsLast(Comparator.reverseOrder())))
 				.toList();
 	}
 
-	private String getDueDate(Object order) {
-		if (order instanceof OrderPurchaseResponse purchase) {
-			return purchase.getDueDate();
+	@Transactional
+	public void deletePurchaseHistoryItem(Source source, Long id) {
+		if (source == Source.PURCHASE) {
+			OrderPurchase purchase = orderPurchaseRepository.findById(id)
+					.orElseThrow(() -> new IllegalArgumentException("발주서를 찾을 수 없습니다."));
+			deleteProductHistories(purchase.getPurchaseId());
+			orderPurchaseRepository.delete(purchase);
+			return;
 		}
 
-		if (order instanceof OrderPurchaseHistoryResponse history) {
-			return history.getDueDate();
-		}
+		OrderPurchaseHistory history = orderPurchaseHistoryRepository.findById(id)
+				.orElseThrow(() -> new IllegalArgumentException("발주이력을 찾을 수 없습니다."));
+		deleteProductHistories(history.getPurchaseId());
+		orderPurchaseHistoryRepository.delete(history);
+	}
 
-		return null;
+	private void deleteProductHistories(String purchaseId) {
+		orderProductHistoryRepository.deleteByPurchaseId(purchaseId);
+	}
+
+	@Transactional(readOnly = true)
+	public List<OrderPurchaseResponse> findDashboardOrders() {
+		return orderPurchaseRepository.findAllByOrderByCreatedTimeDesc().stream()
+				.map(OrderPurchaseResponse::from)
+				.limit(30)
+				.toList();
 	}
 
 	@Transactional
@@ -143,18 +163,11 @@ public class OrderPurChaseService {
 	}
 
 	public void savePurchaseHistory(OrderPurchase purchase) {
-		if (orderPurchaseHistoryRepository.existsByPurchaseId(purchase.getPurchaseId())) return;
-		OrderPurchaseHistory history = new OrderPurchaseHistory();
+		OrderPurchaseHistory history = orderPurchaseHistoryRepository.findByPurchaseId(purchase.getPurchaseId())
+				.orElseGet(OrderPurchaseHistory::new);
 
-		history.setPurchaseId(purchase.getPurchaseId());
-		history.setCustomer(purchase.getCustomer());
-		history.setProductName(purchase.getProductName());
-		history.setQuantity(purchase.getQuantity());
-		history.setPrice(purchase.getPrice());
-		history.setDueDate(purchase.getDueDate());
-		history.setCreatedTime(purchase.getCreatedTime());
+		copyPurchaseToHistory(purchase, history);
 		history.setStatus(ProcessStatus.WAITING_FOR_SHIPMENT);
-		history.setNote(purchase.getNote());
 
 		orderPurchaseHistoryRepository.save(history);
 	}
@@ -162,6 +175,12 @@ public class OrderPurChaseService {
 	private void saveCancelledPurchaseHistory(OrderPurchase purchase) {
 		OrderPurchaseHistory history = orderPurchaseHistoryRepository.findByPurchaseId(purchase.getPurchaseId())
 				.orElseGet(OrderPurchaseHistory::new);
+		copyPurchaseToHistory(purchase, history);
+		history.setStatus(ProcessStatus.CANCEL);
+		orderPurchaseHistoryRepository.save(history);
+	}
+
+	private void copyPurchaseToHistory(OrderPurchase purchase, OrderPurchaseHistory history) {
 		history.setPurchaseId(purchase.getPurchaseId());
 		history.setCustomer(purchase.getCustomer());
 		history.setProductName(purchase.getProductName());
@@ -169,8 +188,6 @@ public class OrderPurChaseService {
 		history.setPrice(purchase.getPrice());
 		history.setDueDate(purchase.getDueDate());
 		history.setCreatedTime(purchase.getCreatedTime());
-		history.setStatus(ProcessStatus.CANCEL);
 		history.setNote(purchase.getNote());
-		orderPurchaseHistoryRepository.save(history);
 	}
 }

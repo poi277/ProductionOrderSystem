@@ -26,36 +26,36 @@ public class OrderPurChaseController {
 
 	@GetMapping
 	public ResponseEntity<ApiResponse> getOrders() {
-		return ResponseEntity.ok().body(new ApiResponse(true, "purchase orders loaded", orderPurChaseService.findPurchases()));
+		return ResponseEntity.ok().body(new ApiResponse(true, "발주서 목록을 조회했습니다.", orderPurChaseService.findPurchases()));
 	}
 
 	@GetMapping("/getDashBoard")
 	public ResponseEntity<ApiResponse> getdashBoardOrders() {
 		return ResponseEntity.ok()
-				.body(new ApiResponse(true, "purchase orders loaded", orderPurChaseService.findDashboardOrders()));
+				.body(new ApiResponse(true, "전체 작업 현황을 조회했습니다.", orderPurChaseService.findDashboardOrders()));
 	}
 
 	@GetMapping("/{id}")
 	public ResponseEntity<ApiResponse> getOrder(@PathVariable("id") Long id) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "purchase order loaded",
+		return ResponseEntity.ok().body(new ApiResponse(true, "발주서를 조회했습니다.",
 				orderPurChaseService.findPurchase(id)));
 	}
 
 	@GetMapping("/purchase-histories")
 	public ResponseEntity<ApiResponse> getPurchaseHistories() {
-		return ResponseEntity.ok().body(new ApiResponse(true, "purchase histories loaded",
+		return ResponseEntity.ok().body(new ApiResponse(true, "발주이력 목록을 조회했습니다.",
 				orderPurChaseService.findPurchaseHistories()));
 	}
 
 	@GetMapping("/purchase-histories/{id}")
 	public ResponseEntity<ApiResponse> getPurchaseHistory(@PathVariable("id") Long id) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "purchase history loaded",
+		return ResponseEntity.ok().body(new ApiResponse(true, "발주이력을 조회했습니다.",
 				orderPurChaseService.findPurchaseHistory(id)));
 	}
 
 	@PostMapping("/post")
 	public ResponseEntity<ApiResponse> postOrder(@Valid @RequestBody OrderPurchaseRequest request) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "purchase order saved", orderPurChaseService.savePurchase(request)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "발주서를 저장했습니다.", orderPurChaseService.savePurchase(request)));
 	}
 
 	@PutMapping("/{id}")
@@ -63,13 +63,13 @@ public class OrderPurChaseController {
 			@PathVariable("id") Long id,
 			@Valid @RequestBody OrderPurchaseRequest request
 	) {
-		return ResponseEntity.ok().body(new ApiResponse(true, "purchase order updated", orderPurChaseService.updatePurchase(id, request)));
+		return ResponseEntity.ok().body(new ApiResponse(true, "발주서를 수정했습니다.", orderPurChaseService.updatePurchase(id, request)));
 	}
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ApiResponse> deleteOrder(@PathVariable("id") Long id) {
 		orderPurChaseService.deletePurchase(id);
-		return ResponseEntity.ok().body(new ApiResponse(true, "purchase order deleted"));
+		return ResponseEntity.ok().body(new ApiResponse(true, "발주서를 삭제했습니다."));
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

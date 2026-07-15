@@ -1,15 +1,15 @@
 import type { ApiResponse, DashboardOrder } from "./dashboardTypes";
-
-const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
 
 export async function fetchDashboardOrders(signal?: AbortSignal) {
-  const response = await fetch(`${orderApiBaseUrl}/getDashBoard`, {
+  const response = await apiClient(orderEndpoints.dashboard, {
     cache: "no-store",
     signal,
   });
 
   if (!response.ok) {
-    throw new Error("전체 작업 현황을 불러오지 못했습니다.");
+    throw new Error(await getApiErrorMessage(response, "전체 작업 현황을 불러오지 못했습니다."));
   }
 
   const result = (await response.json()) as ApiResponse<DashboardOrder[]>;

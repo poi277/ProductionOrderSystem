@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import OrderProductionFormCard from "./OrderProductionFormCard";
 import type { OrderProductionForm } from "./OrderProductionFormCard";
+import { orderEndpoints } from "../../../lib/endpoints";
+import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import InlineNotice from "../common/InlineNotice";
+import CreatePanelActionButtons from "./CreatePanelActionButtons";
 
 type OrderProductionCreatePanelProps = {
   onCancel: () => void;
@@ -32,8 +36,6 @@ type ProductionOrderSelection = {
   productionQuantity: string;
 };
 
-const orderApiBaseUrl = process.env.NEXT_PUBLIC_ORDER_API_BASE_URL ?? "http://localhost:8080/order";
-
 const text = {
   cancel: "취소",
   saveError: "생산지시 저장에 실패했습니다.",
@@ -43,16 +45,6 @@ const text = {
   submitting: "제출 중",
   title: "새 생산지시 입력",
 };
-
-async function getApiErrorMessage(response: Response, fallbackMessage: string) {
-  try {
-    const result = (await response.json()) as Partial<ApiResponse<unknown>>;
-
-    return result.message || fallbackMessage;
-  } catch {
-    return fallbackMessage;
-  }
-}
 
 export default function OrderProductionCreatePanel({ onCancel, submitButtonClassName }: OrderProductionCreatePanelProps) {
   const initialForm = useMemo<OrderProductionForm>(
@@ -78,7 +70,7 @@ export default function OrderProductionCreatePanel({ onCancel, submitButtonClass
   useEffect(() => {
     const loadProductionOrderNumbers = async () => {
       try {
-        const response = await fetch(`${orderApiBaseUrl}/productions`);
+        const response = await apiClient(orderEndpoints.productions);
 
         if (!response.ok) {
           setOrderNoOptions([]);
@@ -123,7 +115,7 @@ export default function OrderProductionCreatePanel({ onCancel, submitButtonClass
     setSubmitMessage("");
 
     try {
-      const response = await fetch(`${orderApiBaseUrl}/productions`, {
+      const response = await apiClient(orderEndpoints.productions, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -167,28 +159,9 @@ export default function OrderProductionCreatePanel({ onCancel, submitButtonClass
         title=""
       />
 
-      <div className="flex gap-2">
-        <button
-          className={`h-8 flex-1 rounded-md ${submitButtonClassName} text-xs font-bold disabled:bg-slate-300`}
-          disabled={submitStatus === "saving"}
-          type="submit"
-        >
-          {submitStatus === "saving" ? text.submitting : text.submit}
-        </button>
-        <button
-          className="h-8 flex-1 rounded-md border border-slate-200 bg-white text-xs font-bold text-slate-500"
-          onClick={onCancel}
-          type="button"
-        >
-          {text.cancel}
-        </button>
-      </div>
+      <CreatePanelActionButtons cancelText={text.cancel} isSaving={submitStatus === "saving"} onCancel={onCancel} submitButtonClassName={submitButtonClassName} submitText={text.submit} submittingText={text.submitting} />
 
-      {submitMessage && (
-        <p className={`text-xs font-bold ${submitStatus === "error" ? "text-red-600" : "text-emerald-600"}`}>
-          {submitMessage}
-        </p>
-      )}
+      <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
     </form>
   );
 }

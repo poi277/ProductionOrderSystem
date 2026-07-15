@@ -63,6 +63,16 @@ public interface OrderProductRepository extends JpaRepository<OrderProduct, Stri
 			from OrderProduct product
 			join fetch product.production production
 			join fetch production.purchase
+			where product.productQr in :productQrs
+			""")
+	List<OrderProduct> findAllByProductQrInWithProductionAndPurchase(
+			@Param("productQrs") List<String> productQrs);
+
+	@Query("""
+			select product
+			from OrderProduct product
+			join fetch product.production production
+			join fetch production.purchase
 			where production.purchase.purchaseId = :purchaseId
 			order by product.createdTime desc
 			""")
