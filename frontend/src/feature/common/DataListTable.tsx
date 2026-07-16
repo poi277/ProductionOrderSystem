@@ -1,4 +1,5 @@
 import ListCheckbox from "./ListCheckbox";
+import { ResizableColumnHandle, useResizableTableColumns } from "./ResizableTableColumns";
 import { getCategoryActiveClass } from "./categoryActiveStyles";
 import type { CategoryActiveKey } from "./categoryActiveStyles";
 import type { ReactNode } from "react";
@@ -48,6 +49,8 @@ export default function DataListTable<TRow>({
   const rowIds = rows.map(getRowId);
   const checkedIdSet = useMemo(() => new Set(checkedRowIds ?? []), [checkedRowIds]);
   const isAllRowsChecked = rowIds.length > 0 && rowIds.every((rowId) => checkedIdSet.has(rowId));
+  const { columnWidths, startResize, tableWidth } = useResizableTableColumns();
+  const unitWidth = 100 / columns.length;
 
   const handleToggleAllRows = () => {
     if (!onCheckboxChange) {
@@ -69,33 +72,40 @@ export default function DataListTable<TRow>({
       onClick={onBlankClick}
     >
       <div className="data-list-scrollbar h-full min-w-0 max-w-full overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]">
-        <table className="w-full table-fixed border-collapse text-left text-sm">
+        <table
+          className="w-full table-fixed border-collapse text-left text-sm"
+          style={tableWidth == null ? undefined : { width: tableWidth }}
+        >
           <colgroup>
-            <col style={{ width: checkboxHeader ? "64px" : "40px" }} />
-            {columns.map((column) => (
-              <col key={column.key} />
+            <col style={{ width: columnWidths?.[0] ?? `${unitWidth / 2}%` }} />
+            {columns.map((column, index) => (
+              <col
+                key={column.key}
+                style={{ width: columnWidths?.[index + 1] ?? `${index === 0 ? unitWidth / 2 : unitWidth}%` }}
+              />
             ))}
           </colgroup>
           <thead className="sticky top-0 z-10 bg-white">
-            <tr className="border-b border-slate-200 text-xs text-slate-500">
-              <th className="px-3 py-3 text-center font-bold text-slate-900">
+            <tr className="border-b border-slate-200 text-[13px] font-semibold text-slate-600">
+              <th className="relative px-3 py-3 text-center text-[13px] font-semibold text-slate-600">
                 <div className="flex flex-col items-center justify-center gap-1">
                   {checkboxHeader && <span>{checkboxHeader}</span>}
                   <ListCheckbox checked={isAllRowsChecked} onChange={handleToggleAllRows} />
                 </div>
+                <ResizableColumnHandle columnIndex={0} onResize={startResize} />
               </th>
-              {columns.map((column) => {
+              {columns.map((column, columnIndex) => {
                 const sortable = sortableColumnKeys.includes(column.key);
                 const condition = sortConditions.find((item) => item.key === column.key);
 
                 return (
                 <th
-                  className="p-0 text-center font-bold text-slate-900"
+                  className="relative p-0 text-center text-[13px] font-semibold text-slate-600"
                   key={column.key}
                 >
                   {sortable ? (
                     <button
-                      className={`relative flex w-full items-center justify-center rounded-xl px-7 py-3 transition-colors ${
+                      className={`relative flex w-full items-center justify-center rounded-xl px-7 py-3 text-[13px] font-semibold !text-slate-600 transition-colors ${
                         condition ? getCategoryActiveClass(categoryKey) : "text-slate-900 hover:bg-slate-100"
                       }`}
                       onClick={() => onColumnSort?.(column.key)}
@@ -104,7 +114,10 @@ export default function DataListTable<TRow>({
                       {column.header}
                       <ColumnSortIcon direction={condition?.direction} />
                     </button>
-                  ) : <div className="px-3 py-3">{column.header}</div>}
+                  ) : <div className="px-3 py-3 text-[13px] font-semibold text-slate-600">{column.header}</div>}
+                  {columnIndex < columns.length - 1 && (
+                    <ResizableColumnHandle columnIndex={columnIndex + 1} onResize={startResize} />
+                  )}
                 </th>
                 );
               })}
@@ -138,7 +151,7 @@ export default function DataListTable<TRow>({
                   {columns.map((column, columnIndex) => {
                     const align = column.align ?? (columnIndex < 3 ? "left" : "center");
                     const cellClassName =
-                      column.cellClassName ?? "truncate px-3 py-3 font-bold text-slate-900";
+                      column.cellClassName ?? "truncate px-3 py-3 text-[15px] font-bold text-slate-900";
 
                     return (
                     <td

@@ -33,12 +33,16 @@
 2.PACKAGING만 조회된다.백엔드에서 이 앞의 enum빼고 조회하면된다.
 3.출하랑 납품출하버튼을 누르면 WAITING_FOR_SHIPMENT로 변경된다.
 
-- 제품이력
+- 출하이력
 1.WAITING_FOR_SHIPMENT만 조회된다.
+
+- 발주이력
+1.모든 발주서가 조회된다.
 
 
 - 스캔
 1.한가지의 제품과 그 제품의 productprocesshitory가 조회된다.
+
 
 삭제 매커니즘
 1.발주서를 삭제하면 발주서Id를 기준으로 product(제품)랑 productprocesshistory(제품프로세스이력)과 생산지시(production)과 발주서(purchase)가 데이터베이스에 삭제된다.

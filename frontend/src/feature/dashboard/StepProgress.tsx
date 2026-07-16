@@ -1,4 +1,4 @@
-import { formatKoreanDateTime, formatTime } from "../common/dateFormat";
+import { formatKoreanDateTime, formatKoreanShortDateTime24Hour } from "../common/dateFormat";
 import { getProgressInfo, PROGRESS_STATUSES, PROGRESS_STEPS } from "./progressStatus";
 import type { ProcessStatus } from "./dashboardTypes";
 
@@ -39,10 +39,10 @@ export default function StepProgress({ compact = false, processCompletedTimes = 
                 {isCompleted && <span className="size-1.5 rounded-full bg-white" />}
               </span>
               <span
-                className="absolute bottom-0 whitespace-nowrap text-[10px] font-semibold leading-none text-slate-500"
+                className="absolute bottom-0 whitespace-nowrap text-xs font-semibold leading-none text-slate-500"
                 title={completedTime ? formatKoreanDateTime(completedTime) : undefined}
               >
-                {completedTime ? formatTime(completedTime) : ""}
+                {completedTime ? formatKoreanShortDateTime24Hour(completedTime) : ""}
               </span>
             </li>
           );

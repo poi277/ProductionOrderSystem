@@ -1,4 +1,4 @@
-import { formatKoreanDateTime, formatTime } from "../common/dateFormat";
+import { formatKoreanDateTime, formatKoreanShortDateTime } from "../common/dateFormat";
 import { PRODUCT_PROCESS_LABELS, PRODUCT_PROCESS_STEPS } from "../ordersidebar/processStatusUtils";
 import type { ProductProcessHistory, ProductProcessStatus, ProductQrDetail } from "./qrSearchTypes";
 
@@ -54,8 +54,8 @@ export default function ProductQrDetailCard({ product }: { product: ProductQrDet
                       {hasDefect && <span className="size-1.5 rounded-full bg-red-500" />}
                     </span>
                     <span className={`mt-2 text-center text-[11px] font-bold ${completed ? "text-slate-700" : "text-slate-400"}`}>{label}</span>
-                    <span className="mt-0.5 text-[10px] text-slate-400" title={formatKoreanDateTime(latest?.completedTime)}>
-                      {formatTime(latest?.completedTime)}
+                    <span className="mt-0.5 text-xs font-semibold text-blue-800" title={formatKoreanDateTime(latest?.completedTime)}>
+                      {formatKoreanShortDateTime(latest?.completedTime)}
                     </span>
                   </div>
                 );
@@ -70,14 +70,14 @@ export default function ProductQrDetailCard({ product }: { product: ProductQrDet
         {histories.length === 0 ? (
           <p className="mt-3 text-sm text-slate-400">공정 이력이 없습니다.</p>
         ) : (
-          <ol className="mt-3 max-h-[180px] divide-y divide-slate-100 overflow-y-auto pr-2">
+          <ol className="mt-3 grid max-h-[240px] grid-cols-3 gap-3 overflow-y-auto pr-2">
             {historyRows(histories).map(({ history, repeated }) => (
-              <li className="flex flex-wrap items-center justify-between gap-3 py-3" key={history.id}>
+              <li className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-100 p-3" key={history.id}>
                 <div>
                   <p className="text-sm font-bold text-slate-800">
                     {PRODUCT_PROCESS_LABELS[history.process]}{repeated ? history.process === "TEST" ? " 재검사 완료" : " 재작업 완료" : " 완료"}
                   </p>
-                  <p className="mt-0.5 text-xs text-slate-400">{formatKoreanDateTime(history.completedTime)}</p>
+                  <p className="mt-0.5 text-xs font-semibold text-blue-800">{formatKoreanDateTime(history.completedTime)}</p>
                 </div>
                 <div className="flex gap-2">
                   {repeated && <Badge tone="amber">재작업</Badge>}
