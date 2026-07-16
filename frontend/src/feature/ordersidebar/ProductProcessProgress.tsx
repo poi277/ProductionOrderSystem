@@ -16,7 +16,7 @@ export default function ProductProcessProgress({
     <ProcessProgress
       accent={editing ? "violet" : "gray"}
       disabled={!editing}
-      disabledStatuses={["WAITING_FOR_SHIPMENT"]}
+      disabledStatuses={["SHIPPED"]}
       editable={editing}
       onChange={onChange}
       pendingStatus={pendingStatus}
@@ -24,3 +24,4 @@ export default function ProductProcessProgress({
     />
   );
 }
+

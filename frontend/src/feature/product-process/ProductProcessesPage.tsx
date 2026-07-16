@@ -72,7 +72,7 @@ const productProcessLabels: Record<string, string> = {
   TEST: "기능검사",
   FINAL_INSPECTION: "출하검사",
   PACKAGING: "포장",
-  WAITING_FOR_SHIPMENT: "납품대기",
+  SHIPPED: "출하",
 };
 
 type SortKey = keyof Omit<ProductProcess, "id">;
@@ -348,3 +348,4 @@ function toProductProcessLabel(value: string | null | undefined) {
 
   return productProcessLabels[value] ?? value;
 }
+

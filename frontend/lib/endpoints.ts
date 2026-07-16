@@ -15,6 +15,7 @@ export const orderEndpoints = {
   production: (id: string | number) => `${ORDER_BASE}/productions/${encoded(id)}`,
   productionProcesses: `${ORDER_BASE}/productions/product-processes`,
   productProcess: (productQr: string) => `${ORDER_BASE}/product-processes/${encoded(productQr)}`,
+  productQrDetail: (productQr: string) => `${ORDER_BASE}/products/qr/${encoded(productQr)}`,
   productProcessesByProduction: (purchaseId: string) =>
     `${ORDER_BASE}/product-processes/by-production/${encoded(purchaseId)}`,
   histories: `${ORDER_BASE}/histories`,

@@ -2,7 +2,7 @@ package com.poi.orderSystem.features.DTO;
 
 import java.time.LocalDateTime;
 
-import com.poi.orderSystem.features.entity.OrderPurchaseHistory;
+import com.poi.orderSystem.features.entity.OrderPurchase;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import lombok.Getter;
@@ -20,20 +20,20 @@ public class OrderPurchaseHistoryResponse {
 	private final String note;
 	private final LocalDateTime createdTime;
 
-	private OrderPurchaseHistoryResponse(OrderPurchaseHistory history) {
-		this.id = history.getId();
-		this.purchaseId = history.getPurchaseId();
-		this.customer = history.getCustomer();
-		this.productName = history.getProductName();
-		this.quantity = history.getQuantity();
-		this.price = history.getPrice();
-		this.dueDate = history.getDueDate();
-		this.status = history.getStatus();
-		this.note = history.getNote();
-		this.createdTime = history.getCreatedTime();
+	private OrderPurchaseHistoryResponse(OrderPurchase purchase) {
+		this.id = purchase.getId();
+		this.purchaseId = purchase.getPurchaseId();
+		this.customer = purchase.getCustomer();
+		this.productName = purchase.getProductName();
+		this.quantity = purchase.getQuantity();
+		this.price = purchase.getPrice();
+		this.dueDate = purchase.getDueDate();
+		this.status = purchase.getStatus();
+		this.note = purchase.getNote();
+		this.createdTime = purchase.getCreatedTime();
 	}
 
-	public static OrderPurchaseHistoryResponse from(OrderPurchaseHistory history) {
-		return history == null ? null : new OrderPurchaseHistoryResponse(history);
+	public static OrderPurchaseHistoryResponse from(OrderPurchase purchase) {
+		return purchase == null ? null : new OrderPurchaseHistoryResponse(purchase);
 	}
 }

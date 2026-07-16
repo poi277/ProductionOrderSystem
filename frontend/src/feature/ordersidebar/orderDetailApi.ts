@@ -1,7 +1,7 @@
 import { orderEndpoints } from "../../../lib/endpoints";
 import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
 
-export type ProcessStatus = "PURCHASESUBMIT" | "INSTRUCTION" | "ASSEMBLY" | "TEST" | "FINAL_INSPECTION" | "PACKAGING" | "WAITING_FOR_SHIPMENT";
+export type ProcessStatus = "PURCHASESUBMIT" | "INSTRUCTION" | "ASSEMBLY" | "TEST" | "FINAL_INSPECTION" | "PACKAGING" | "SHIPPED" | "CANCEL";
 
 export type PurchaseDetail = {
   id: number; purchaseId: string; customer: string | null; productName: string | null; quantity: number | null;
@@ -47,3 +47,4 @@ export async function deleteProduct(productQr: string) {
   const response = await apiClient(orderEndpoints.productProcess(productQr), { method: "DELETE" });
   if (!response.ok) throw new Error(await getApiErrorMessage(response, "제품을 삭제하지 못했습니다."));
 }
+

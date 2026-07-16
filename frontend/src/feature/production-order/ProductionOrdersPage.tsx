@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import DataListTable from "../common/DataListTable";
@@ -104,7 +104,7 @@ const currentProcessSteps = [
   { key: "TEST", label: "기능검사" },
   { key: "FINAL_INSPECTION", label: "출하검사" },
   { key: "PACKAGING", label: "포장" },
-  { key: "WAITING_FOR_SHIPMENT", label: "납품대기" },
+  { key: "SHIPPED", label: "출하" },
 ] as const;
 
 const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
@@ -492,3 +492,4 @@ function formatDateTime(value: string | null) {
 function formatNumber(value: number | null) {
   return value == null ? "-" : value.toLocaleString("ko-KR");
 }
+

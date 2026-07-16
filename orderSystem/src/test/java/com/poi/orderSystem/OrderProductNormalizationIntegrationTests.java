@@ -21,7 +21,7 @@ import com.poi.orderSystem.features.Order.production.OrderProductionService;
 import com.poi.orderSystem.features.entity.OrderProduction;
 import com.poi.orderSystem.features.entity.OrderPurchase;
 import com.poi.orderSystem.features.repository.OrderProductionRepository;
-import com.poi.orderSystem.features.repository.OrderProductHistoryRepository;
+import com.poi.orderSystem.features.repository.OrderProductRepository;
 import com.poi.orderSystem.features.repository.OrderPurchaseRepository;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
@@ -37,7 +37,7 @@ class OrderProductNormalizationIntegrationTests {
 
 	private final OrderPurchaseRepository orderPurchaseRepository;
 	private final OrderProductionRepository orderProductionRepository;
-	private final OrderProductHistoryRepository orderProductHistoryRepository;
+	private final OrderProductRepository orderProductRepository;
 	private final OrderProductionService orderProductionService;
 	private final OrderProductService orderProductService;
 	private final EntityManager entityManager;
@@ -82,7 +82,7 @@ class OrderProductNormalizationIntegrationTests {
 		long createPreparedStatementCount = statistics.getPrepareStatementCount();
 		System.out.printf("PERF create700Ms=%d inserts=%d preparedStatements=%d%n",
 				createElapsedMillis, createInsertCount, createPreparedStatementCount);
-		assertThat(createInsertCount).isEqualTo(701L);
+		assertThat(createInsertCount).isEqualTo(1401L);
 		entityManager.clear();
 
 		OrderProduction production = orderProductionRepository.findByPurchasePurchaseId(purchaseId).orElseThrow();
@@ -123,7 +123,7 @@ class OrderProductNormalizationIntegrationTests {
 		assertThat(statistics.getEntityDeleteCount()).isZero();
 		entityManager.clear();
 
-		OrderProductProcessResponse relationBasedResponse = orderProductService.findProduct(changedLot + "-1");
+		OrderProductProcessResponse relationBasedResponse = orderProductService.findProduct(firstLot + "-1");
 		assertThat(relationBasedResponse.getCustomer()).isEqualTo("customer-after");
 		assertThat(relationBasedResponse.getProductName()).isEqualTo("product-after");
 		assertThat(relationBasedResponse.getLot()).isEqualTo(changedLot);
@@ -139,7 +139,7 @@ class OrderProductNormalizationIntegrationTests {
 		assertThat(selectCount).isEqualTo(1L);
 
 		List<String> productQrs = IntStream.rangeClosed(1, 700)
-				.mapToObj(index -> changedLot + "-" + index)
+				.mapToObj(index -> firstLot + "-" + index)
 				.toList();
 		statistics.clear();
 		long historyStartedAt = System.nanoTime();
@@ -147,13 +147,20 @@ class OrderProductNormalizationIntegrationTests {
 		entityManager.flush();
 		long historyElapsedMillis = (System.nanoTime() - historyStartedAt) / 1_000_000;
 		long historyQueryCount = statistics.getQueryExecutionCount();
-		System.out.printf("PERF completeAndHistory700Ms=%d queryExecutions=%d preparedStatements=%d historyInserts=%d%n",
+		System.out.printf("PERF completeAndHistory700Ms=%d queryExecutions=%d preparedStatements=%d inserts=%d updates=%d historyRows=1400 changedProducts=700%n",
 				historyElapsedMillis,
 				historyQueryCount,
 				statistics.getPrepareStatementCount(),
-				statistics.getEntityInsertCount());
+				statistics.getEntityInsertCount(),
+				statistics.getEntityUpdateCount());
+		assertThat(statistics.getEntityInsertCount()).isEqualTo(1400L);
+		assertThat(statistics.getEntityUpdateCount()).isEqualTo(701L);
 		assertThat(historyQueryCount).isLessThanOrEqualTo(10L);
-		assertThat(orderProductHistoryRepository.findByPurchaseIdOrderByCreatedTimeDesc(purchaseId)).hasSize(700);
+		assertThat(orderProductRepository.findByProductionPurchasePurchaseId(purchaseId))
+				.hasSize(700)
+				.allMatch(product -> product.getProcess() == ProcessStatus.SHIPPED);
+		assertThat(orderPurchaseRepository.findByPurchaseId(purchaseId).orElseThrow().getStatus())
+				.isEqualTo(ProcessStatus.SHIPPED);
 	}
 
 	private OrderProductionRequest productionRequest(String purchaseId, String lot, int quantity) {

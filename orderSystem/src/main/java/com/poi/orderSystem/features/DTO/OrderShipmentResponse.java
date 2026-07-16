@@ -45,8 +45,8 @@ public class OrderShipmentResponse {
 		OrderProduction production = product.getProduction();
 		OrderPurchase purchase = production == null ? null : production.getPurchase();
 		ProcessStatus process = product.getProcess();
-		LocalDateTime latestPackingTime = products.stream()
-				.map(item -> item.getPackingCompletedTime() == null ? item.getCreatedTime() : item.getPackingCompletedTime())
+		LocalDateTime latestCreatedTime = products.stream()
+				.map(OrderProduct::getCreatedTime)
 				.filter(time -> time != null)
 				.max(Comparator.naturalOrder())
 				.orElse(null);
@@ -66,7 +66,7 @@ public class OrderShipmentResponse {
 		this.processName = process == null ? null : process.getLabel();
 		this.shippedAt = null;
 		this.memo = production == null ? null : production.getLot();
-		this.createdAt = latestPackingTime == null ? null : latestPackingTime.toString();
+		this.createdAt = latestCreatedTime == null ? null : latestCreatedTime.toString();
 		this.updatedAt = this.createdAt;
 		this.price = purchase == null ? null : purchase.getPrice();
 		this.dueDate = purchase == null ? null : purchase.getDueDate();

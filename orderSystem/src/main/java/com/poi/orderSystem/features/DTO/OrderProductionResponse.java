@@ -67,7 +67,7 @@ public class OrderProductionResponse {
 		this.instructionQuantity = productCount;
 		this.productQrQuantity = production.getProductQrQuantity();
 		this.completedQuantity = 0;
-		this.shippedQuantity = processCounts.getOrDefault(ProcessStatus.WAITING_FOR_SHIPMENT.name(), 0L).intValue();
+		this.shippedQuantity = processCounts.getOrDefault(ProcessStatus.SHIPPED.name(), 0L).intValue();
 		this.createdTime = production.getCreatedTime() == null ? null : production.getCreatedTime().toString();
 		this.processCounts = processCounts;
 		this.processLabels = processLabels();

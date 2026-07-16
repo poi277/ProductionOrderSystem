@@ -3,7 +3,6 @@ package com.poi.orderSystem.features.DTO;
 import java.time.LocalDateTime;
 
 import com.poi.orderSystem.features.entity.OrderPurchase;
-import com.poi.orderSystem.features.entity.OrderPurchaseHistory;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import lombok.Getter;
@@ -50,9 +49,4 @@ public class OrderPurchaseHistoryListResponse {
 				purchase.getDueDate(), purchase.getStatus(), purchase.getNote(), purchase.getCreatedTime());
 	}
 
-	public static OrderPurchaseHistoryListResponse from(OrderPurchaseHistory history) {
-		return new OrderPurchaseHistoryListResponse(history.getId(), Source.HISTORY, history.getPurchaseId(),
-				history.getCustomer(), history.getProductName(), history.getQuantity(), history.getPrice(),
-				history.getDueDate(), history.getStatus(), history.getNote(), history.getCreatedTime());
-	}
 }

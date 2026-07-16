@@ -1,25 +1,30 @@
-import { getProgressInfo, PROGRESS_STEPS } from "./progressStatus";
+import { formatKoreanDateTime, formatTime } from "../common/dateFormat";
+import { getProgressInfo, PROGRESS_STATUSES, PROGRESS_STEPS } from "./progressStatus";
 import type { ProcessStatus } from "./dashboardTypes";
 
 type StepProgressProps = {
   compact?: boolean;
+  processCompletedTimes?: Partial<Record<ProcessStatus, string>>;
   status?: ProcessStatus | null;
 };
 
-export default function StepProgress({ compact = false, status }: StepProgressProps) {
+export default function StepProgress({ compact = false, processCompletedTimes = {}, status }: StepProgressProps) {
   const progress = getProgressInfo(status);
 
   return (
-    <div className={compact ? "min-w-[340px]" : "min-w-[700px]"} aria-label={`현재 진행 상태: ${progress.detailLabel}`}>
-      <ol className="flex items-center">
+    <div className="w-full" aria-label={`현재 진행 상태: ${progress.detailLabel}`}>
+      <ol className="grid grid-cols-7 items-start">
         {PROGRESS_STEPS.map((step, index) => {
           const isCompleted = index <= progress.currentStepIndex;
+          const completedTime = index <= progress.currentStepIndex
+            ? processCompletedTimes[PROGRESS_STATUSES[index]]
+            : undefined;
           return (
-            <li className="relative flex min-w-0 flex-1 flex-col items-center" key={step}>
+            <li className="relative flex h-12 min-w-0 items-center justify-center" key={step}>
               {index > 0 && (
                 <span
                   aria-hidden="true"
-                  className={`absolute right-1/2 ${compact ? "top-[7px]" : "top-[9px]"} h-0.5 w-full ${
+                  className={`absolute right-1/2 top-1/2 h-0.5 w-full -translate-y-1/2 ${
                     index - 1 < progress.currentStepIndex ? "bg-blue-400" : "bg-slate-200"
                   }`}
                 />
@@ -32,6 +37,12 @@ export default function StepProgress({ compact = false, status }: StepProgressPr
                 }`}
               >
                 {isCompleted && <span className="size-1.5 rounded-full bg-white" />}
+              </span>
+              <span
+                className="absolute bottom-0 whitespace-nowrap text-[10px] font-semibold leading-none text-slate-500"
+                title={completedTime ? formatKoreanDateTime(completedTime) : undefined}
+              >
+                {completedTime ? formatTime(completedTime) : ""}
               </span>
             </li>
           );

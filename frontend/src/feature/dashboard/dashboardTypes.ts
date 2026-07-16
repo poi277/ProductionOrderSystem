@@ -5,7 +5,7 @@ export type ProcessStatus =
   | "TEST"
   | "FINAL_INSPECTION"
   | "PACKAGING"
-  | "WAITING_FOR_SHIPMENT";
+  | "SHIPPED";
 
 export type DashboardOrder = {
   id: number;
@@ -14,6 +14,7 @@ export type DashboardOrder = {
   productName: string | null;
   quantity: number | null;
   status: ProcessStatus | null;
+  processCompletedTimes: Partial<Record<ProcessStatus, string>>;
 };
 
 export type ApiResponse<T> = {
@@ -21,3 +22,4 @@ export type ApiResponse<T> = {
   message: string;
   data: T;
 };
+

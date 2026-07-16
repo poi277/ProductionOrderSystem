@@ -19,4 +19,8 @@ public interface OrderPurchaseRepository extends JpaRepository<OrderPurchase, Lo
 	List<OrderPurchase> findAllByOrderByCreatedTimeDesc();
 
 	List<OrderPurchase> findAllByStatusOrderByCreatedTimeDesc(ProcessStatus status);
+
+	List<OrderPurchase> findAllByStatusNotInOrderByCreatedTimeDesc(List<ProcessStatus> statuses);
+
+	List<OrderPurchase> findAllByOrderByCreatedTimeDescIdDesc();
 }

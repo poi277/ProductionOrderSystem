@@ -2,7 +2,7 @@ package com.poi.orderSystem.features.DTO;
 
 import java.time.LocalDateTime;
 
-import com.poi.orderSystem.features.entity.OrderProductHistory;
+import com.poi.orderSystem.features.entity.OrderProduct;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import lombok.Getter;
@@ -16,16 +16,17 @@ public class OrderProductHistoryResponse {
 	private final ProcessStatus status;
 	private final LocalDateTime createdTime;
 
-	private OrderProductHistoryResponse(OrderProductHistory history) {
-		this.productQr = history.getProductQr();
-		this.purchaseId = history.getPurchaseId();
-		this.productName = history.getProductName();
-		this.isDefect = history.isDefect();
-		this.status = history.getProcess();
-		this.createdTime = history.getCreatedTime();
+	private OrderProductHistoryResponse(OrderProduct product) {
+		this.productQr = product.getProductQr();
+		this.purchaseId = product.getProduction() == null ? null : product.getProduction().getPurchaseId();
+		this.productName = product.getProduction() == null || product.getProduction().getPurchase() == null
+				? null : product.getProduction().getPurchase().getProductName();
+		this.isDefect = product.isDefect();
+		this.status = product.getProcess();
+		this.createdTime = product.getCreatedTime();
 	}
 
-	public static OrderProductHistoryResponse from(OrderProductHistory history) {
-		return new OrderProductHistoryResponse(history);
+	public static OrderProductHistoryResponse from(OrderProduct product) {
+		return new OrderProductHistoryResponse(product);
 	}
 }

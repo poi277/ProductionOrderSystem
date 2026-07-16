@@ -49,7 +49,7 @@ const productProcessLabels: Record<string, string> = {
   TEST: "기능검사",
   FINAL_INSPECTION: "출하검사",
   PACKAGING: "포장",
-  WAITING_FOR_SHIPMENT: "납품대기",
+  SHIPPED: "출하",
 };
 
 const text = {
@@ -432,35 +432,6 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       }
     };
 
-    const handleHistoryDelete = async () => {
-      if (!order.historyId) {
-        return;
-      }
-
-      setSubmitStatus("saving");
-      setSubmitMessage("");
-
-      try {
-        const response = await apiClient(orderEndpoints.history(order.historyId), {
-          method: "DELETE",
-        });
-
-        if (!response.ok) {
-          throw new Error(await getApiErrorMessage(response, "이력 삭제에 실패했습니다."));
-        }
-
-        setSubmitStatus("success");
-        setSubmitMessage("이력이 삭제되었습니다.");
-        setIsDeleteConfirmOpen(false);
-        window.dispatchEvent(new CustomEvent<string>("history-deleted", { detail: String(order.historyId) }));
-      } catch (error) {
-        setSubmitStatus("error");
-        setSubmitMessage(error instanceof Error ? error.message : "이력 삭제 중 오류가 발생했습니다.");
-      } finally {
-        setSubmitStatus((current) => (current === "saving" ? "idle" : current));
-      }
-    };
-
     return (
       <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleHistorySubmit}>
         <OrderHistoryFormCard
@@ -470,16 +441,10 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           title=""
         />
 
-        <DetailActionButtons deleteText={text.delete} isSaving={submitStatus === "saving"} onDelete={() => setIsDeleteConfirmOpen(true)} saveDisabled={isEditing && !hasHistoryChanges} saveText={isEditing ? text.updateComplete : text.update} />
+        <DetailActionButtons deleteText={text.delete} isSaving={submitStatus === "saving"} saveDisabled={isEditing && !hasHistoryChanges} saveText={isEditing ? text.updateComplete : text.update} />
 
         <InlineNotice isError={submitStatus === "error"} message={submitMessage} />
 
-        <DeleteConfirmDialog
-          disabled={submitStatus === "saving"}
-          isOpen={isDeleteConfirmOpen}
-          onCancel={() => setIsDeleteConfirmOpen(false)}
-          onConfirm={handleHistoryDelete}
-        />
       </form>
     );
   }
@@ -886,11 +851,10 @@ function toPurchaseStatus(status: string) {
       return "IN_PROGRESS";
     case "\uc644\ub8cc":
       return "COMPLETED";
-    case "\ucd9c\ud558\uc644\ub8cc":
-      return "SHIPPED";
     case "\ucde8\uc18c":
       return "CANCELED";
     default:
       return status;
   }
 }
+

@@ -22,9 +22,11 @@ public interface OrderProductionRepository extends JpaRepository<OrderProduction
 			from OrderProduction production
 			left join fetch production.purchase
 			left join fetch production.products
+			where production.purchase.status not in :excludedStatuses
 			order by production.createdTime desc
 			""")
-	List<OrderProduction> findAllWithPurchaseAndProductsByOrderByCreatedTimeDesc();
+	List<OrderProduction> findAllWithPurchaseAndProductsByOrderByCreatedTimeDesc(
+			@Param("excludedStatuses") List<com.poi.orderSystem.features.util.EnumUtil.ProcessStatus> excludedStatuses);
 
 	@Query("""
 			select distinct production

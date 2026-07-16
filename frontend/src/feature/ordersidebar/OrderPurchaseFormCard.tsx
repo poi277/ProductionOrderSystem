@@ -35,7 +35,6 @@ const text = {
   statusCompleted: "\uc644\ub8cc",
   statusInstruction: "\uc9c0\uc2dc\ub300\uae30",
   statusProducing: "\uc0dd\uc0b0\uc911",
-  statusShipped: "\ucd9c\ud558\uc644\ub8cc",
   unitPrice: "\ub2e8\uac00",
 };
 
@@ -131,7 +130,6 @@ export default function OrderPurchaseFormCard({
               <option value="WAITING">{text.statusInstruction}</option>
               <option value="IN_PROGRESS">{text.statusProducing}</option>
               <option value="COMPLETED">{text.statusCompleted}</option>
-              <option value="SHIPPED">{text.statusShipped}</option>
               <option value="CANCELED">{text.statusCanceled}</option>
             </select>
           </FormRow>

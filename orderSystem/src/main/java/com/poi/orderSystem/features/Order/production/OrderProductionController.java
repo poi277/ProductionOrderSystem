@@ -50,8 +50,8 @@ public class OrderProductionController {
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ApiResponse> deleteProduction(@PathVariable("id") Long id) {
-		orderProductionService.deleteProduction(id);
-		return ResponseEntity.ok().body(new ApiResponse(true, "생산지시를 삭제했습니다."));
+		return ResponseEntity.ok().body(new ApiResponse(true, "생산지시를 삭제했습니다.",
+				orderProductionService.deleteProduction(id)));
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

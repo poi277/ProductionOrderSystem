@@ -62,7 +62,8 @@ export type PurchaseOption = {
   quantity: number | null;
   price: number | null;
   dueDate: string | null;
-  status: "PURCHASESUBMIT" | "INSTRUCTION" | "ASSEMBLY" | "TEST" | "FINAL_INSPECTION" | "PACKAGING" | "WAITING_FOR_SHIPMENT" | null;
+  status: "PURCHASESUBMIT" | "INSTRUCTION" | "ASSEMBLY" | "TEST" | "FINAL_INSPECTION" | "PACKAGING" | "SHIPPED" | null;
   note: string | null;
   createdTime: string | null;
 };
+

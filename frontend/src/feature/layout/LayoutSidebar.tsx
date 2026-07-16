@@ -31,10 +31,10 @@ type Menu = {
 
 const mainMenus: Menu[] = [
   { activeKey: "dashboard", label: "전체현황", href: "/dashboard", icon: "dashboard" },
-  { activeKey: "order", label: "발주서", href: "/orders", icon: "orders" },
+  { activeKey: "order", label: "발주서 접수", href: "/orders", icon: "orders" },
   { activeKey: "production", label: "생산지시", href: "/production-orders", icon: "production" },
   { activeKey: "processOverview", label: "공정현황", href: "/product-processes", icon: "process" },
-  { activeKey: "process", label: "공정이력", href: "/process-histories", icon: "history" },
+  { activeKey: "process", label: "공정현황(세부)", href: "/process-histories", icon: "history" },
   { activeKey: "shipment", label: "납품/출하", href: "/shipments", icon: "shipment" },
   { activeKey: "label", label: "라벨출력", href: "/labels", icon: "label" },
   { activeKey: "qr", label: "QR조회", href: "/qr-search", icon: "qr" },
@@ -43,7 +43,7 @@ const mainMenus: Menu[] = [
 
 const historyMenus: Menu[] = [
   { activeKey: "history", label: "발주이력", href: "/order-purchase-histories", icon: "history" },
-  { activeKey: "history", label: "제품이력", href: "/histories", icon: "history" },
+  { activeKey: "history", label: "출하이력", href: "/histories", icon: "history" },
 ];
 
 const settingMenus: Menu[] = [

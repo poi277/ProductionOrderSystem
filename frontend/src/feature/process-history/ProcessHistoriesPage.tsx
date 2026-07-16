@@ -66,7 +66,6 @@ const BATCH_PROCESS_OPTIONS: Array<{ value: ProcessStatus; label: string }> = [
   { value: "TEST", label: "기능검사" },
   { value: "FINAL_INSPECTION", label: "출하검사" },
   { value: "PACKAGING", label: "포장" },
-  { value: "WAITING_FOR_SHIPMENT", label: "납품대기" },
 ];
 
 function batchProcessLabel(process: ProcessStatus) {
@@ -213,9 +212,12 @@ export default function ProcessHistoriesPage() {
 
     setIsBatchSaving(true);
     try {
-      const responses = await Promise.all(
-        selectedRows.map((row) =>
-          apiClient(orderEndpoints.productProcess(row.productQr), {
+      // 개별 제품 변경을 동시에 보내면 각 트랜잭션이 변경 전 제품 상태를 읽어
+      // 발주서 상태를 서로 덮어쓸 수 있으므로 순차 처리한다.
+      const responses: Response[] = [];
+      for (const row of selectedRows) {
+        responses.push(
+          await apiClient(orderEndpoints.productProcess(row.productQr), {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -223,8 +225,8 @@ export default function ProcessHistoriesPage() {
               isDefect: batchJudgment === "defect",
             }),
           }),
-        ),
-      );
+        );
+      }
 
       const failedResponse = responses.find((response) => !response.ok);
       if (failedResponse) {

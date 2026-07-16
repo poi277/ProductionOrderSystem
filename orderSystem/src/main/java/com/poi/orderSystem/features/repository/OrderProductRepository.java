@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,9 +22,11 @@ public interface OrderProductRepository extends JpaRepository<OrderProduct, Stri
 			from OrderProduct product
 			left join fetch product.production production
 			left join fetch production.purchase
+			where production.purchase.status not in :excludedStatuses
 			order by product.createdTime desc
 			""")
-	List<OrderProduct> findAllWithProductionAndPurchaseByOrderByCreatedTimeDesc();
+	List<OrderProduct> findAllWithProductionAndPurchaseByOrderByCreatedTimeDesc(
+			@Param("excludedStatuses") List<ProcessStatus> excludedStatuses);
 
 	@Query("""
 			select product
@@ -47,6 +50,17 @@ public interface OrderProductRepository extends JpaRepository<OrderProduct, Stri
 	List<OrderProduct> findByProcessInWithProductionAndPurchaseOrderByCreatedTimeDesc(
 			@Param("process") List<ProcessStatus> processes);
 
+	@Query("""
+			select product
+			from OrderProduct product
+			join fetch product.production production
+			join fetch production.purchase purchase
+			where purchase.status = :status
+			order by product.createdTime desc
+			""")
+	List<OrderProduct> findByPurchaseStatusWithProductionAndPurchaseOrderByCreatedTimeDesc(
+			@Param("status") ProcessStatus status);
+
 	List<OrderProduct> findByProductionPurchasePurchaseId(String purchaseId);
 
 	@Query("""
@@ -57,6 +71,15 @@ public interface OrderProductRepository extends JpaRepository<OrderProduct, Stri
 			where product.productQr = :productQr
 			""")
 	Optional<OrderProduct> findByProductQrWithProductionAndPurchase(@Param("productQr") String productQr);
+
+	@Query("""
+			select product
+			from OrderProduct product
+			join fetch product.production production
+			join fetch production.purchase purchase
+			where product.productQr = :productQr
+			""")
+	Optional<OrderProduct> findQrDetailByProductQr(@Param("productQr") String productQr);
 
 	@Query("""
 			select product
@@ -82,5 +105,11 @@ public interface OrderProductRepository extends JpaRepository<OrderProduct, Stri
 
 	Long countByProductionPurchasePurchaseIdAndProcess(String purchaseId, ProcessStatus process);
 
-	void deleteByProductionPurchasePurchaseId(String purchaseId);
+	@Query("select product.productQr from OrderProduct product where product.production.id = :productionId")
+	List<String> findProductQrsByProductionId(@Param("productionId") Long productionId);
+
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
+	@Query("delete from OrderProduct product where product.production.id = :productionId")
+	int deleteAllByProductionId(@Param("productionId") Long productionId);
+
 }

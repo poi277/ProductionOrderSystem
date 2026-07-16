@@ -38,14 +38,13 @@ public class OrderProduct implements Persistable<String> {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "production_id", nullable = false)
 	private OrderProduction production;
-
 	private boolean isDefect;
 
 	@Enumerated(EnumType.STRING)
 	private ProcessStatus process;
 
 	private LocalDateTime createdTime;
-	private LocalDateTime packingCompletedTime;
+
 
 	@Transient
 	private boolean newEntity = true;

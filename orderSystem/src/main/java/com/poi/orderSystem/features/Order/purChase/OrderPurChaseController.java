@@ -68,8 +68,8 @@ public class OrderPurChaseController {
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ApiResponse> deleteOrder(@PathVariable("id") Long id) {
-		orderPurChaseService.deletePurchase(id);
-		return ResponseEntity.ok().body(new ApiResponse(true, "발주서를 삭제했습니다."));
+		return ResponseEntity.ok().body(new ApiResponse(true, "발주서를 삭제했습니다.",
+				orderPurChaseService.deletePurchase(id)));
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

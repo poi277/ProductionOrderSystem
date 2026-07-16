@@ -30,8 +30,8 @@ public class OrderPurchaseHistoryController {
 	public ResponseEntity<ApiResponse> deleteOrderPurchaseHistory(
 			@PathVariable("source") Source source,
 			@PathVariable("id") Long id) {
-		orderPurChaseService.deletePurchaseHistoryItem(source, id);
-		return ResponseEntity.ok(new ApiResponse(true, "발주이력을 삭제했습니다."));
+		return ResponseEntity.ok(new ApiResponse(true, "발주이력을 삭제했습니다.",
+				orderPurChaseService.deletePurchaseHistoryItem(source, id)));
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

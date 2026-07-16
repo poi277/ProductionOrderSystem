@@ -7,10 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.poi.orderSystem.features.DTO.OrderHistoryRequest;
 import com.poi.orderSystem.features.DTO.OrderProductHistoryResponse;
-import com.poi.orderSystem.features.entity.OrderProductHistory;
-import com.poi.orderSystem.features.entity.OrderProduction;
-import com.poi.orderSystem.features.repository.OrderProductHistoryRepository;
-import com.poi.orderSystem.features.repository.OrderProductionRepository;
+import com.poi.orderSystem.features.repository.OrderProductRepository;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
 import lombok.RequiredArgsConstructor;
@@ -19,50 +16,37 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class OrderHistoryService {
 
-	private final OrderProductHistoryRepository orderProductHistoryRepository;
-	private final OrderProductionRepository orderProductionRepository;
+	private final OrderProductRepository orderProductRepository;
 
 	@Transactional(readOnly = true)
 	public List<OrderProductHistoryResponse> findHistories() {
-		return orderProductHistoryRepository.findAllByOrderByCreatedTimeDesc().stream()
+		// 현재 출하이력 화면은 최종 출하가 아닌 출하 상태를 이력 기준으로 사용한다.
+		return orderProductRepository
+				.findByPurchaseStatusWithProductionAndPurchaseOrderByCreatedTimeDesc(
+						ProcessStatus.SHIPPED).stream()
 				.map(OrderProductHistoryResponse::from).toList();
 	}
 
 	@Transactional(readOnly = true)
 	public OrderProductHistoryResponse findHistory(String productQr) {
-		return orderProductHistoryRepository.findById(productQr).map(OrderProductHistoryResponse::from).orElse(null);
+		return orderProductRepository.findByProductQrWithProductionAndPurchase(productQr)
+				.filter(product -> product.getProduction().getPurchase().getStatus()
+						== ProcessStatus.SHIPPED)
+				.map(OrderProductHistoryResponse::from).orElse(null);
 	}
 
 	@Transactional
 	public OrderProductHistoryResponse saveHistory(OrderHistoryRequest request) {
-		OrderProductHistory history = new OrderProductHistory();
-		applyHistoryRequest(history, request);
-
-		return OrderProductHistoryResponse.from(orderProductHistoryRepository.save(history));
+		throw new IllegalArgumentException("출하 완료 이력은 별도로 생성할 수 없습니다.");
 	}
 
 	@Transactional
 	public OrderProductHistoryResponse updateHistory(String productQr, OrderHistoryRequest request) {
-		OrderProductHistory history = orderProductHistoryRepository.findById(productQr)
-				.orElseThrow(() -> new IllegalArgumentException("제품이력을 찾을 수 없습니다."));
-		request.setProductQr(productQr);
-		applyHistoryRequest(history, request);
-
-		return OrderProductHistoryResponse.from(orderProductHistoryRepository.save(history));
+		throw new IllegalArgumentException("출하 완료 이력은 수정할 수 없습니다.");
 	}
 
 	@Transactional
 	public void deleteHistory(String productQr) {
-		orderProductHistoryRepository.deleteById(productQr);
-	}
-
-	private void applyHistoryRequest(OrderProductHistory history, OrderHistoryRequest request) {
-		history.setProductQr(request.getProductQr());
-		OrderProduction production = orderProductionRepository.findByPurchasePurchaseId(request.getProductionId())
-				.orElseThrow(() -> new IllegalArgumentException("생산지시를 찾을 수 없습니다."));
-		history.setPurchaseId(production.getPurchaseId());
-		history.setProductName(production.getPurchase() == null ? null : production.getPurchase().getProductName());
-		history.setDefect(Boolean.TRUE.equals(request.getIsDefect()));
-		history.setProcess(request.getProcess() == null ? ProcessStatus.CANCEL : request.getProcess());
+		throw new IllegalArgumentException("출하 완료 이력은 삭제할 수 없습니다.");
 	}
 }

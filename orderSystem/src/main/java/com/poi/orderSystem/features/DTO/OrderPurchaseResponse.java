@@ -1,6 +1,8 @@
 package com.poi.orderSystem.features.DTO;
 
 import java.time.LocalDateTime;
+import java.util.EnumMap;
+import java.util.Map;
 
 import com.poi.orderSystem.features.entity.OrderPurchase;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
@@ -24,8 +26,9 @@ public class OrderPurchaseResponse {
 	private final String lot;
 	private final Integer productQrQuantity;
 	private final String productQr;
+	private final Map<ProcessStatus, LocalDateTime> processCompletedTimes;
 
-	private OrderPurchaseResponse(OrderPurchase purchase) {
+	private OrderPurchaseResponse(OrderPurchase purchase, Map<ProcessStatus, LocalDateTime> processCompletedTimes) {
 		this.id = purchase.getId();
 		this.purchaseId = purchase.getPurchaseId();
 		this.customer = purchase.getCustomer();
@@ -43,9 +46,21 @@ public class OrderPurchaseResponse {
 		this.productQrQuantity = production == null ? null : production.getProductQrQuantity();
 		this.productQr = production == null || production.getProducts() == null ? null
 				: production.getProducts().stream().map(product -> product.getProductQr()).findFirst().orElse(null);
+		this.processCompletedTimes = new EnumMap<>(ProcessStatus.class);
+		if (purchase.getCreatedTime() != null) {
+			this.processCompletedTimes.put(ProcessStatus.PURCHASESUBMIT, purchase.getCreatedTime());
+		}
+		if (processCompletedTimes != null) {
+			this.processCompletedTimes.putAll(processCompletedTimes);
+		}
 	}
 
 	public static OrderPurchaseResponse from(OrderPurchase purchase) {
-		return purchase == null ? null : new OrderPurchaseResponse(purchase);
+		return from(purchase, Map.of());
+	}
+
+	public static OrderPurchaseResponse from(
+			OrderPurchase purchase, Map<ProcessStatus, LocalDateTime> processCompletedTimes) {
+		return purchase == null ? null : new OrderPurchaseResponse(purchase, processCompletedTimes);
 	}
 }

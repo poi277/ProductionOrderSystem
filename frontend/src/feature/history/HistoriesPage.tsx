@@ -158,37 +158,6 @@ export default function HistoriesPage() {
     openOrderDetailSidebar(toSidebarOrder(row));
   };
 
-  const handleDeleteSelectedRows = async () => {
-    const selectedRows = histories.filter((row) => checkedRowIds.includes(row.id));
-
-    if (selectedRows.length === 0 || !window.confirm(`${selectedRows.length}개를 정말로 삭제하시겠습니까?`)) {
-      return;
-    }
-
-    const responses = await Promise.all(
-      selectedRows.map((row) =>
-        apiClient(orderEndpoints.history(row.productQr), {
-          method: "DELETE",
-        }),
-      ),
-    );
-
-    const failedResponse = responses.find((response) => !response.ok);
-    if (failedResponse) {
-      window.alert(await getApiErrorMessage(failedResponse, "선택한 제품이력 삭제에 실패했습니다."));
-      return;
-    }
-
-    setHistories((current) =>
-      current
-        .filter((row) => !checkedRowIds.includes(row.id))
-        .map((row, index) => ({ ...row, id: index + 1 })),
-    );
-    setCheckedRowIds([]);
-    setSelectedRowId(null);
-    closeOrderSidebar();
-  };
-
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-950">
       <section className="flex min-w-0 flex-1 flex-col px-5 py-5">
@@ -197,7 +166,6 @@ export default function HistoriesPage() {
           onSearchFieldChange={setSearchField}
           onSearchTextChange={setSearchText}
           onSort={handleSort}
-          onDelete={handleDeleteSelectedRows}
           options={sortButtons}
           searchField={searchField}
           searchOptions={searchOptions}
@@ -290,7 +258,7 @@ function toHistoryRowFromApi(history: HistoryResponse, index: number): HistoryRo
 function toHistoryStatusLabel(status: string | null) {
   if (status === "CANCEL") return "취소";
   if (status === "DEFECTIVE") return "불량";
-  return "정상";
+  return "완료";
 }
 
 function formatDateTime(value: string | null) {

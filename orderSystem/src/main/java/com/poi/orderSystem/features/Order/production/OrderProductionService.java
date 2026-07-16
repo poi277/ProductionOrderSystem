@@ -15,12 +15,12 @@ import com.poi.orderSystem.features.DTO.OrderProductionProcessResponse;
 import com.poi.orderSystem.features.DTO.OrderProductionRequest;
 import com.poi.orderSystem.features.DTO.OrderProductionResponse;
 import com.poi.orderSystem.features.entity.OrderProduct;
+import com.poi.orderSystem.features.entity.OrderProductProcessHistory;
 import com.poi.orderSystem.features.entity.OrderProduction;
 import com.poi.orderSystem.features.entity.OrderPurchase;
-import com.poi.orderSystem.features.entity.OrderPurchaseHistory;
 import com.poi.orderSystem.features.repository.OrderProductRepository;
+import com.poi.orderSystem.features.repository.OrderProductProcessHistoryRepository;
 import com.poi.orderSystem.features.repository.OrderProductionRepository;
-import com.poi.orderSystem.features.repository.OrderPurchaseHistoryRepository;
 import com.poi.orderSystem.features.repository.OrderPurchaseRepository;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
 
@@ -31,19 +31,21 @@ import lombok.RequiredArgsConstructor;
 public class OrderProductionService {
 	private final OrderProductionRepository orderProductionRepository;
 	private final OrderProductRepository orderProductRepository;
+	private final OrderProductProcessHistoryRepository orderProductProcessHistoryRepository;
 	private final OrderPurchaseRepository orderPurchaseRepository;
-	private final OrderPurchaseHistoryRepository orderPurchaseHistoryRepository;
 
 	@Transactional(readOnly = true)
 	public List<OrderProductionResponse> findProductions() {
-		return orderProductionRepository.findAllWithPurchaseAndProductsByOrderByCreatedTimeDesc().stream()
+		return orderProductionRepository.findAllWithPurchaseAndProductsByOrderByCreatedTimeDesc(
+				List.of(ProcessStatus.SHIPPED, ProcessStatus.CANCEL)).stream()
 				.map(this::toProductionResponse).toList();
 	}
 
 	@Transactional(readOnly = true)
 	public List<OrderProductionProcessResponse> findProductProcesses() {
-		return orderProductionRepository.findAllWithPurchaseAndProductsByOrderByCreatedTimeDesc().stream()
-				.filter(production -> production.getPurchase().getStatus().ordinal() >= ProcessStatus.INSTRUCTION.ordinal())
+		return orderProductionRepository.findAllWithPurchaseAndProductsByOrderByCreatedTimeDesc(
+				List.of(ProcessStatus.PURCHASESUBMIT, ProcessStatus.SHIPPED,
+						ProcessStatus.CANCEL)).stream()
 				.map(OrderProductionProcessResponse::from).toList();
 	}
 
@@ -89,16 +91,24 @@ public class OrderProductionService {
 	}
 
 	@Transactional
-	public void deleteProduction(Long id) {
+	public Map<String, Integer> deleteProduction(Long id) {
 		OrderProduction production = orderProductionRepository.findById(id)
 				.orElseThrow(() -> new IllegalArgumentException("생산지시를 찾을 수 없습니다."));
 		OrderPurchase purchase = production.getPurchase();
-		if (purchase == null) {
-			orderProductionRepository.delete(production);
-			return;
-		}
-		saveCancelledPurchaseHistory(purchase);
-		orderPurchaseRepository.delete(purchase);
+		if (purchase == null) throw new IllegalArgumentException("연결된 발주서를 찾을 수 없습니다.");
+
+		List<String> productQrs = orderProductRepository.findProductQrsByProductionId(production.getId());
+		int historyCount = productQrs.isEmpty() ? 0
+				: orderProductProcessHistoryRepository.deleteAllByProductQrIn(productQrs);
+		int deletedProducts = orderProductRepository.deleteAllByProductionId(production.getId());
+		orderProductionRepository.deleteById(production.getId());
+		orderPurchaseRepository.deleteById(purchase.getId());
+
+		return Map.of(
+				"deletedProcessHistories", historyCount,
+				"deletedProducts", deletedProducts,
+				"deletedProductions", 1,
+				"deletedPurchases", 1);
 	}
 
 	private void synchronizeOrderProducts(OrderProductionRequest request, OrderProduction production, int previousQuantity) {
@@ -133,12 +143,12 @@ public class OrderProductionService {
 				.collect(Collectors.toSet());
 
 		List<OrderProduct> productsToSave = new ArrayList<>();
-		List<OrderProduct> replacedProducts = new ArrayList<>();
 		for (int index = 1; index <= targetQuantity; index++) {
 			String desiredQr = lot + "-" + index;
 			OrderProduct source = index <= existingProducts.size() ? existingProducts.get(index - 1) : null;
 
-			if (source != null && desiredQr.equals(source.getProductQr())) {
+			// 생성된 제품 QR은 이력 식별자이므로 LOT가 바뀌어도 삭제하거나 교체하지 않는다.
+			if (source != null) {
 				continue;
 			}
 
@@ -149,21 +159,22 @@ public class OrderProductionService {
 			OrderProduct product = new OrderProduct();
 			product.setProductQr(desiredQr);
 			product.setProduction(production);
-			product.setProcess(source == null || source.getProcess() == null
-					? ProcessStatus.INSTRUCTION : source.getProcess());
-			if (source != null) {
-				product.setDefect(source.isDefect());
-				product.setCreatedTime(source.getCreatedTime());
-				replacedProducts.add(source);
-			}
+			product.setProcess(ProcessStatus.INSTRUCTION);
 			productsToSave.add(product);
 		}
 
 		if (!productsToSave.isEmpty()) {
 			orderProductRepository.saveAll(productsToSave);
-		}
-		if (!replacedProducts.isEmpty()) {
-			orderProductRepository.deleteAll(replacedProducts);
+			List<OrderProductProcessHistory> instructionHistories = productsToSave.stream().map(product -> {
+				OrderProductProcessHistory history = new OrderProductProcessHistory();
+				history.setProductQr(product.getProductQr());
+				history.setPurchaseId(purchase.getPurchaseId());
+				history.setProcess(ProcessStatus.INSTRUCTION);
+				history.setCompletedTime(product.getCreatedTime());
+				history.setDefect(product.isDefect());
+				return history;
+			}).toList();
+			orderProductProcessHistoryRepository.saveAll(instructionHistories);
 		}
 	}
 
@@ -204,21 +215,6 @@ public class OrderProductionService {
 	private void updatePurchaseStatus(OrderPurchase purchase, ProcessStatus status) {
 		purchase.setStatus(status);
 		orderPurchaseRepository.save(purchase);
-	}
-
-	private void saveCancelledPurchaseHistory(OrderPurchase purchase) {
-		OrderPurchaseHistory history = orderPurchaseHistoryRepository.findByPurchaseId(purchase.getPurchaseId())
-				.orElseGet(OrderPurchaseHistory::new);
-		history.setPurchaseId(purchase.getPurchaseId());
-		history.setCustomer(purchase.getCustomer());
-		history.setProductName(purchase.getProductName());
-		history.setQuantity(purchase.getQuantity());
-		history.setPrice(purchase.getPrice());
-		history.setDueDate(purchase.getDueDate());
-		history.setCreatedTime(purchase.getCreatedTime());
-		history.setStatus(ProcessStatus.CANCEL);
-		history.setNote(purchase.getNote());
-		orderPurchaseHistoryRepository.save(history);
 	}
 
 	private boolean hasText(String value) {

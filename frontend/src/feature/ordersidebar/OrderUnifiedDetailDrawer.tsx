@@ -16,6 +16,7 @@ import type { ProcessStatus, ProductDetail, PurchaseDetail } from "./orderDetail
 import { orderEndpoints } from "../../../lib/endpoints";
 import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
 import { useAsyncAction } from "../common/useAsyncAction";
+import type { CategoryActiveKey } from "../common/categoryActiveStyles";
 import DrawerActionButtons from "./DrawerActionButtons";
 import type { SidebarNotification } from "./OrderSidebarContext";
 
@@ -37,6 +38,14 @@ export enum DrawerCategory {
   PROCESS_OVERVIEW = "processOverview",
   PRODUCT = "product",
 }
+
+const DRAWER_CATEGORY_KEYS: Record<DrawerCategory, CategoryActiveKey> = {
+  [DrawerCategory.DISABLED]: "settings",
+  [DrawerCategory.PURCHASE]: "order",
+  [DrawerCategory.PRODUCTION]: "production",
+  [DrawerCategory.PROCESS_OVERVIEW]: "processOverview",
+  [DrawerCategory.PRODUCT]: "process",
+};
 
 type Props = {
   category: DrawerCategory;
@@ -353,6 +362,7 @@ export default function OrderUnifiedDetailDrawer({
 
       <DrawerActionButtons
         canSave={!drawerDisabled && hasChanges}
+        categoryKey={DRAWER_CATEGORY_KEYS[category]}
         deletable={!drawerDisabled && (hasPurchase || hasProduction || hasProduct)}
         isPending={isActionPending}
         onDelete={() => runAction(handleDelete)}

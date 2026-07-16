@@ -22,7 +22,7 @@ export default function ProductionProcessProgress({
     <ProcessProgress
       accent={active ? "orange" : "gray"}
       disabled={!displayEnabled}
-      disabledStatuses={["WAITING_FOR_SHIPMENT"]}
+      disabledStatuses={["SHIPPED"]}
       editable={active && hasProduction && editable}
       onChange={onChange}
       pendingStatus={pendingStatus}
@@ -30,3 +30,4 @@ export default function ProductionProcessProgress({
     />
   );
 }
+

@@ -35,7 +35,7 @@ const text = {
 const shipmentProcessOptions = [
   { label: "최종검수", value: "FINAL_INSPECTION" },
   { label: "포장", value: "PACKAGING" },
-  { label: "납품대기", value: "WAITING_FOR_SHIPMENT" },
+  { label: "출하", value: "SHIPPED" },
 ];
 
 export default function OrderShipmentFormCard({
@@ -87,3 +87,4 @@ function FormRow({ label, children }: { children: ReactNode; label: string }) {
     </label>
   );
 }
+
