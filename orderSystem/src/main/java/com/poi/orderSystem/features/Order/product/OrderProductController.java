@@ -37,13 +37,13 @@ public class OrderProductController {
 		return ResponseEntity.ok().body(new ApiResponse(true, "제품 공정을 수정했습니다.", orderProductService.updateProductProcess(productQr, request)));
 	}
 
-	@PutMapping("/product-processes/by-production/{purchaseId}")
+	@PutMapping("/product-processes/by-production/{purchaseDbId}")
 	public ResponseEntity<ApiResponse> putProductProcessesByProduction(
-			@PathVariable("purchaseId") String purchaseId,
+			@PathVariable("purchaseDbId") Long purchaseDbId,
 			@RequestBody OrderProductProcessRequest request
 	) {
 		return ResponseEntity.ok().body(new ApiResponse(true, "생산 제품 공정을 수정했습니다.",
-				orderProductService.updateProductProcessesByProduction(purchaseId, request)));
+				orderProductService.updateProductProcessesByProduction(purchaseDbId, request)));
 	}
 
 	@GetMapping("/shipments")

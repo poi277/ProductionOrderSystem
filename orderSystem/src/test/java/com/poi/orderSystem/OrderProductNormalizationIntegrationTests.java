@@ -57,6 +57,32 @@ class OrderProductNormalizationIntegrationTests {
 	}
 
 	@Test
+	void duplicatePurchaseNumbersUseTheSelectedDatabaseId() {
+		OrderPurchase first = purchaseWithNumber("DUPLICATE-PO");
+		OrderPurchase second = purchaseWithNumber("DUPLICATE-PO");
+		first = orderPurchaseRepository.saveAndFlush(first);
+		second = orderPurchaseRepository.saveAndFlush(second);
+
+		orderProductionService.saveProduction(productionRequest(second.getId(), "DUPLICATE-LOT", 1));
+		entityManager.flush();
+
+		assertThat(orderProductionRepository.findByPurchase_Id(first.getId())).isEmpty();
+		assertThat(orderProductionRepository.findByPurchase_Id(second.getId()))
+				.isPresent().get().extracting(production -> production.getPurchase().getId())
+				.isEqualTo(second.getId());
+	}
+
+	private OrderPurchase purchaseWithNumber(String purchaseId) {
+		OrderPurchase purchase = new OrderPurchase();
+		purchase.setPurchaseId(purchaseId);
+		purchase.setCustomer("duplicate-customer");
+		purchase.setProductName("duplicate-product");
+		purchase.setQuantity(1);
+		purchase.setStatus(ProcessStatus.PURCHASESUBMIT);
+		return purchase;
+	}
+
+	@Test
 	void createsAndReadsSevenHundredProductsWithoutNPlusOne() {
 		String suffix = UUID.randomUUID().toString().substring(0, 8);
 		String purchaseId = "NORMALIZE-" + suffix;
@@ -69,9 +95,10 @@ class OrderProductNormalizationIntegrationTests {
 		purchase.setProductName("product-before");
 		purchase.setQuantity(700);
 		purchase.setStatus(ProcessStatus.PURCHASESUBMIT);
-		orderPurchaseRepository.saveAndFlush(purchase);
+		purchase = orderPurchaseRepository.saveAndFlush(purchase);
+		Long purchaseDbId = purchase.getId();
 
-		OrderProductionRequest createRequest = productionRequest(purchaseId, firstLot, 700);
+		OrderProductionRequest createRequest = productionRequest(purchaseDbId, firstLot, 700);
 		Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
 		statistics.clear();
 		long createStartedAt = System.nanoTime();
@@ -85,7 +112,7 @@ class OrderProductNormalizationIntegrationTests {
 		assertThat(createInsertCount).isEqualTo(1401L);
 		entityManager.clear();
 
-		OrderProduction production = orderProductionRepository.findByPurchasePurchaseId(purchaseId).orElseThrow();
+		OrderProduction production = orderProductionRepository.findByPurchase_Id(purchaseDbId).orElseThrow();
 		assertThat(production.getProductQrQuantity()).isEqualTo(700);
 		assertThat(production.getLot()).isEqualTo(firstLot);
 		assertThat(orderProductService.findProduct(firstLot + "-700")).isNotNull();
@@ -97,12 +124,12 @@ class OrderProductNormalizationIntegrationTests {
 		assertThat(updatedProduct.getProcess()).isEqualTo(ProcessStatus.TEST);
 		assertThat(updatedProduct.getIsDefect()).isTrue();
 
-		OrderPurchase changedPurchase = orderPurchaseRepository.findByPurchaseId(purchaseId).orElseThrow();
+		OrderPurchase changedPurchase = orderPurchaseRepository.findById(purchaseDbId).orElseThrow();
 		changedPurchase.setCustomer("customer-after");
 		changedPurchase.setProductName("product-after");
 		orderPurchaseRepository.save(changedPurchase);
 
-		OrderProductionRequest updateRequest = productionRequest(purchaseId, changedLot, 700);
+		OrderProductionRequest updateRequest = productionRequest(purchaseDbId, changedLot, 700);
 		orderProductionService.updateProduction(production.getId(), updateRequest);
 		entityManager.flush();
 		entityManager.clear();
@@ -156,16 +183,16 @@ class OrderProductNormalizationIntegrationTests {
 		assertThat(statistics.getEntityInsertCount()).isEqualTo(1400L);
 		assertThat(statistics.getEntityUpdateCount()).isEqualTo(701L);
 		assertThat(historyQueryCount).isLessThanOrEqualTo(10L);
-		assertThat(orderProductRepository.findByProductionPurchasePurchaseId(purchaseId))
+		assertThat(orderProductRepository.findByProduction_Purchase_Id(purchaseDbId))
 				.hasSize(700)
 				.allMatch(product -> product.getProcess() == ProcessStatus.SHIPPED);
-		assertThat(orderPurchaseRepository.findByPurchaseId(purchaseId).orElseThrow().getStatus())
+		assertThat(orderPurchaseRepository.findById(purchaseDbId).orElseThrow().getStatus())
 				.isEqualTo(ProcessStatus.SHIPPED);
 	}
 
-	private OrderProductionRequest productionRequest(String purchaseId, String lot, int quantity) {
+	private OrderProductionRequest productionRequest(Long purchaseDbId, String lot, int quantity) {
 		OrderProductionRequest request = new OrderProductionRequest();
-		request.setPurchaseId(purchaseId);
+		request.setPurchaseDbId(purchaseDbId);
 		request.setLot(lot);
 		request.setProductionQuantity(quantity);
 		return request;

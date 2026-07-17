@@ -5,15 +5,16 @@ import java.time.temporal.ChronoUnit;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
+import com.poi.orderSystem.features.util.EnumUtil.ProductCategory;
 
 import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
 import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
+import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
@@ -31,13 +32,14 @@ public class OrderPurchase {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(nullable = false, unique = true)
+	@Column(nullable = false)
 	private String purchaseId;
 
 	private String customer;
 	private String productName;
 	private Integer quantity;
-	private Integer price;
+	@Enumerated(EnumType.STRING)
+	private ProductCategory productCategory;
 	private String dueDate;
 	private LocalDateTime createdTime;
 

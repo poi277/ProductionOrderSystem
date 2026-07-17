@@ -31,7 +31,6 @@ public class OrderShipmentResponse {
 	private final String memo;
 	private final String createdAt;
 	private final String updatedAt;
-	private final Integer price;
 	private final String dueDate;
 	private final ProcessStatus purchaseStatus;
 	private final String note;
@@ -68,7 +67,6 @@ public class OrderShipmentResponse {
 		this.memo = production == null ? null : production.getLot();
 		this.createdAt = latestCreatedTime == null ? null : latestCreatedTime.toString();
 		this.updatedAt = this.createdAt;
-		this.price = purchase == null ? null : purchase.getPrice();
 		this.dueDate = purchase == null ? null : purchase.getDueDate();
 		this.purchaseStatus = purchase == null ? null : purchase.getStatus();
 		this.note = purchase == null ? null : purchase.getNote();

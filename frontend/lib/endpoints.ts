@@ -16,8 +16,8 @@ export const orderEndpoints = {
   productionProcesses: `${ORDER_BASE}/productions/product-processes`,
   productProcess: (productQr: string) => `${ORDER_BASE}/product-processes/${encoded(productQr)}`,
   productQrDetail: (productQr: string) => `${ORDER_BASE}/products/qr/${encoded(productQr)}`,
-  productProcessesByProduction: (purchaseId: string) =>
-    `${ORDER_BASE}/product-processes/by-production/${encoded(purchaseId)}`,
+  productProcessesByProduction: (purchaseDbId: string | number) =>
+	`${ORDER_BASE}/product-processes/by-production/${encoded(purchaseDbId)}`,
   histories: `${ORDER_BASE}/histories`,
   history: (id: string | number) => `${ORDER_BASE}/histories/${encoded(id)}`,
   labels: `${ORDER_BASE}/labels`,

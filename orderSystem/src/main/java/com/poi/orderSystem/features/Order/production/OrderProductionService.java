@@ -51,8 +51,8 @@ public class OrderProductionService {
 
 	@Transactional
 	public OrderProductionResponse saveProduction(OrderProductionRequest request) {
-		OrderPurchase purchase = findPurchase(request.getPurchaseId());
-		OrderProduction production = orderProductionRepository.findByPurchasePurchaseId(request.getPurchaseId())
+		OrderPurchase purchase = findPurchase(request.getPurchaseDbId());
+		OrderProduction production = orderProductionRepository.findByPurchase_Id(request.getPurchaseDbId())
 				.orElseGet(OrderProduction::new);
 		int previousQuantity = production.getProductQrQuantity() == null ? 0 : production.getProductQrQuantity();
 		production.setPurchase(purchase);
@@ -72,7 +72,7 @@ public class OrderProductionService {
 	public OrderProductionResponse updateProduction(Long id, OrderProductionRequest request) {
 		OrderProduction production = orderProductionRepository.findById(id)
 				.orElseThrow(() -> new IllegalArgumentException("생산지시를 찾을 수 없습니다."));
-		OrderPurchase purchase = findPurchase(request.getPurchaseId());
+		OrderPurchase purchase = findPurchase(request.getPurchaseDbId());
 		if (!production.getPurchase().getId().equals(purchase.getId())
 				&& orderProductionRepository.existsByPurchase_Id(purchase.getId())) {
 			throw new IllegalArgumentException("선택한 발주서에 이미 생산지시가 있습니다.");
@@ -133,7 +133,7 @@ public class OrderProductionService {
 		}
 
 		List<OrderProduct> existingProducts = new ArrayList<>(
-				orderProductRepository.findByProductionPurchasePurchaseId(purchase.getPurchaseId()));
+				orderProductRepository.findByProduction_Purchase_Id(purchase.getId()));
 		existingProducts.sort(Comparator.comparingInt(product -> qrSequence(product.getProductQr())));
 		List<String> desiredProductQrs = IntStream.rangeClosed(1, targetQuantity)
 				.mapToObj(index -> lot + "-" + index)
@@ -169,6 +169,7 @@ public class OrderProductionService {
 				OrderProductProcessHistory history = new OrderProductProcessHistory();
 				history.setProductQr(product.getProductQr());
 				history.setPurchaseId(purchase.getPurchaseId());
+				history.setPurchaseDbId(purchase.getId());
 				history.setProcess(ProcessStatus.INSTRUCTION);
 				history.setCompletedTime(product.getCreatedTime());
 				history.setDefect(product.isDefect());
@@ -207,8 +208,8 @@ public class OrderProductionService {
 		return orderProductionRepository.findByIdWithPurchaseAndProducts(id).orElse(fallback);
 	}
 
-	private OrderPurchase findPurchase(String purchaseId) {
-		return orderPurchaseRepository.findByPurchaseId(purchaseId)
+	private OrderPurchase findPurchase(Long purchaseDbId) {
+		return orderPurchaseRepository.findById(purchaseDbId)
 				.orElseThrow(() -> new IllegalArgumentException("발주서를 찾을 수 없습니다."));
 	}
 

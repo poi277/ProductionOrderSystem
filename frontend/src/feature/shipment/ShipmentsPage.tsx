@@ -35,7 +35,6 @@ type Shipment = {
   shippedAt: string;
   memo: string;
   updatedAt: string;
-  price: number | null;
   dueDate: string | null;
   purchaseStatus: string | null;
   purchaseNote: string | null;
@@ -63,7 +62,6 @@ type ShipmentResponse = {
   memo: string | null;
   createdAt: string | null;
   updatedAt: string | null;
-  price: number | null;
   dueDate: string | null;
   purchaseStatus: string | null;
   note: string | null;
@@ -345,9 +343,7 @@ function toSidebarOrder(row: Shipment): Order {
     updatedAt: row.updatedAt,
     customer: row.customer,
     quantity: row.quantity,
-    unitPrice: row.price == null ? "-" : String(row.price),
     dueDate: row.dueDate ?? "-",
-    purchasePrice: row.price,
     purchaseDueDate: row.dueDate,
     purchaseStatus: row.purchaseStatus,
     purchaseNote: row.purchaseNote,
@@ -379,7 +375,7 @@ function toShipmentRow(shipment: OrderShipmentForm, index: number): Shipment {
     shippedAt: formatKoreanDateTimeWithoutYear(shipment.shippedAt),
     memo: shipment.memo || "-",
     updatedAt: formatKoreanDateTimeWithoutYear(shipment.updatedAt),
-    price: null, dueDate: null, purchaseStatus: null, purchaseNote: null, purchaseCreatedTime: null,
+    dueDate: null, purchaseStatus: null, purchaseNote: null, purchaseCreatedTime: null,
     productQrQuantity: null, process: null, isDefect: false,
   };
 }
@@ -405,7 +401,6 @@ function toShipmentRowFromApi(shipment: ShipmentResponse, index: number): Shipme
     shippedAt: formatKoreanDateTimeWithoutYear(shipment.shippedAt),
     memo: shipment.memo ?? "-",
     updatedAt: formatKoreanDateTimeWithoutYear(shipment.updatedAt),
-    price: shipment.price,
     dueDate: shipment.dueDate,
     purchaseStatus: shipment.purchaseStatus,
     purchaseNote: shipment.note,

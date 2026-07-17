@@ -1,12 +1,14 @@
 import { orderEndpoints } from "../../../lib/endpoints";
 import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
+import type { ProductCategory } from "../order/OrdersTypes";
 
 export type ProcessStatus = "PURCHASESUBMIT" | "INSTRUCTION" | "ASSEMBLY" | "TEST" | "FINAL_INSPECTION" | "PACKAGING" | "SHIPPED" | "CANCEL";
 
 export type PurchaseDetail = {
   id: number; purchaseId: string; customer: string | null; productName: string | null; quantity: number | null;
-  price: number | null; dueDate: string | null; status: ProcessStatus | null;
+  dueDate: string | null; status: ProcessStatus | null;
   note: string | null; createdTime: string | null;
+  productCategory?: ProductCategory | null;
 };
 
 export type ProductDetail = {
@@ -33,8 +35,8 @@ export const updateProductProcess = (productQr: string, body: { processName: Pro
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
 
-export const updateProductionProcesses = (purchaseId: string, processName: ProcessStatus) =>
-  request<ProductDetail[]>(orderEndpoints.productProcessesByProduction(purchaseId), {
+export const updateProductionProcesses = (purchaseDbId: number, processName: ProcessStatus) =>
+  request<ProductDetail[]>(orderEndpoints.productProcessesByProduction(purchaseDbId), {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ processName }),
   });
 

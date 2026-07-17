@@ -36,7 +36,6 @@ type OrderPurchaseResponse = {
   customer: string | null;
   productName: string | null;
   quantity: number | null;
-  price: number | null;
   dueDate: string | null;
   status: string | null;
   note: string | null;
@@ -78,7 +77,6 @@ function toForm(order: Order): OrderPurchaseForm {
     customer: order.customer === "-" ? "" : order.customer,
     product: order.product === "-" ? "" : order.product,
     quantity: order.quantity === "-" ? "" : order.quantity.replaceAll(",", ""),
-    unitPrice: order.unitPrice === "-" ? "" : order.unitPrice.replaceAll(",", ""),
     dueDate: order.dueDate === "-" ? "" : order.dueDate.replaceAll(".", "-"),
     memo: order.memo === "-" ? "" : order.memo,
     status: toPurchaseStatus(order.status),
@@ -580,9 +578,9 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       setSubmitMessage("");
 
       try {
-        const updateUrl = order.processUpdateScope === "product"
-          ? orderEndpoints.productProcess(order.productQr ?? "")
-          : orderEndpoints.productProcessesByProduction(processForm.productionOrderNo);
+		const updateUrl = order.processUpdateScope === "product"
+		  ? orderEndpoints.productProcess(order.productQr ?? "")
+		  : orderEndpoints.productProcessesByProduction(order.purchaseDbId ?? "");
         const response = await apiClient(updateUrl, {
           method: "PUT",
           headers: {
@@ -765,7 +763,6 @@ export default function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           customer: form.customer,
           productName: form.product,
           quantity: Number(form.quantity),
-          unitPrice: form.unitPrice ? Number(form.unitPrice) : null,
           dueDate: form.dueDate,
           note: form.memo,
         }),

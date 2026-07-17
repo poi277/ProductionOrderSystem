@@ -13,9 +13,11 @@ import type { Order } from "./OrdersTypes";
 import { orderEndpoints } from "../../../lib/endpoints";
 import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
 import { useApiMutationRevision } from "../../../util/apiMutationStore";
+import { productCategoryBadgeClass, productCategoryLabel } from "../common/productCategory";
 
 type SortKey =
   | "orderNo"
+  | "productCategory"
   | "customer"
   | "product"
   | "quantity"
@@ -28,7 +30,6 @@ type OrderPurchaseResponse = {
   customer: string | null;
   productName: string | null;
   quantity: number | null;
-  price: number | null;
   dueDate: string | null;
   status: string | null;
   statusLabel: string | null;
@@ -38,6 +39,7 @@ type OrderPurchaseResponse = {
   lot: string | null;
   productQrQuantity: number | null;
   productQr: string | null;
+  productCategory?: import("./OrdersTypes").ProductCategory | null;
 };
 
 type ApiResponse<T> = {
@@ -62,16 +64,14 @@ const text = {
   memo: "\ube44\uace0",
   orderNo: "\ubc1c\uc8fc\ubc88\ud638",
   product: "\ud488\uba85",
-  orderAmount: "\ubc1c\uc8fc\uae08\uc561",
   quantity: "\uc218\ub7c9",
   status: "\uc0c1\ud0dc",
-  totalAmount: "\ucd1d\uae08\uc561",
-  unitPrice: "\uae08\uc561",
   unknownLoadError:
     "\ubc1c\uc8fc\uc11c\u0020\ubaa9\ub85d\u0020\uc870\ud68c\u0020\uc911\u0020\uc624\ub958\uac00\u0020\ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4\u002e",
 };
 
 const sortButtons: ListOption<SortKey>[] = [
+  { label: "제품군", key: "productCategory" },
   { label: text.orderNo, key: "orderNo" },
   { label: text.customer, key: "customer" },
   { label: text.product, key: "product" },
@@ -82,14 +82,19 @@ const sortButtons: ListOption<SortKey>[] = [
 
 const orderColumns: DataListColumn<Order>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
+  { align: "center", header: "제품군", key: "productCategory", render: (row) => <ProductCategoryBadge category={row.productCategory} /> },
   { align: "center", header: text.orderNo, key: "orderNo", render: (row) => row.orderNo },
   { align: "center", header: text.customer, key: "customer", render: (row) => row.customer },
   { header: text.product, key: "product", render: (row) => row.product },
   { align: "center", header: "\ubc1c\uc8fc\uc218\ub7c9", key: "quantity", render: (row) => row.quantity },
   { align: "center", header: text.dueDate, key: "dueDate", render: (row) => row.dueDate },
-  { header: text.memo, key: "memo", render: (row) => row.memo },
   { align: "center", header: text.currentProcess, key: "status", render: (row) => row.status },
+  { header: text.memo, key: "memo", render: (row) => row.memo },
 ];
+
+function ProductCategoryBadge({ category }: { category?: Order["productCategory"] }) {
+  return <span className={`inline-flex rounded-full border px-3 py-1 font-bold ${productCategoryBadgeClass(category)}`}>{productCategoryLabel(category)}</span>;
+}
 
 export default function OrdersListPage() {
   const mutationRevision = useApiMutationRevision();
@@ -283,19 +288,17 @@ function toOrderRow(order: OrderPurchaseResponse, index: number): Order {
     id: index + 1,
     purchaseDbId: order.id,
     productionDbId: order.productionDbId ?? undefined,
-    purchasePrice: order.price,
     purchaseStatus: order.status,
     purchaseNote: order.note,
     purchaseCreatedTime: order.createdTime,
     purchaseDueDate: order.dueDate,
+    productCategory: order.productCategory ?? null,
     productQrQuantity: order.productQrQuantity,
     orderNo: order.purchaseId,
     orderDate: "-",
     customer: order.customer ?? "-",
     product: order.productName ?? "-",
     quantity: formatNumber(order.quantity),
-    unitPrice: formatNumber(order.price),
-    totalAmount: formatNumber(calculateTotalAmount(order.quantity, order.price)),
     dueDate: formatDate(order.dueDate),
     status: order.statusLabel ?? order.status ?? "-",
     memo: order.note ?? "-",
@@ -314,14 +317,6 @@ function formatDateTime(value: string | null) {
   return formatKoreanDateTimeWithoutYear(value);
 }
 
-function calculateTotalAmount(quantity: number | null, unitPrice: number | null) {
-  if (quantity == null || unitPrice == null) {
-    return null;
-  }
-
-  return quantity * unitPrice;
-}
-
 function formatNumber(value: number | null) {
   return value == null ? "-" : value.toLocaleString("ko-KR");
 }
@@ -331,9 +326,9 @@ function getSortValue(order: Order, key: SortKey) {
     return Number(order.quantity.replaceAll(",", ""));
   }
 
-  return order[key];
+  return key === "productCategory" ? productCategoryLabel(order.productCategory) : order[key];
 }
 
 function getSearchValue(order: Order, key: SortKey) {
-  return order[key];
+  return key === "productCategory" ? productCategoryLabel(order.productCategory) : order[key];
 }

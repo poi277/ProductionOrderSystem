@@ -15,6 +15,7 @@ export type DashboardOrder = {
   quantity: number | null;
   status: ProcessStatus | null;
   processCompletedTimes: Partial<Record<ProcessStatus, string>>;
+  productCategory: import("../order/OrdersTypes").ProductCategory | null;
 };
 
 export type ApiResponse<T> = {

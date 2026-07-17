@@ -1,6 +1,6 @@
 package com.poi.orderSystem.features.DTO;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,8 +8,8 @@ import lombok.Setter;
 @Setter
 public class OrderProductionRequest {
 
-	@NotBlank
-	private String purchaseId;
+	@NotNull
+	private Long purchaseDbId;
 
 	private String productCodePrefix;
 	private String lot;

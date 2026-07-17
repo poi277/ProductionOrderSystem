@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import OrderProductionFormCard from "./OrderProductionFormCard";
 import type { OrderProductionForm } from "./OrderProductionFormCard";
+import type { OrderNoOption } from "./OrderProductionFormCard";
 import { orderEndpoints } from "../../../lib/endpoints";
 import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
 import InlineNotice from "../common/InlineNotice";
@@ -21,6 +22,7 @@ type ApiResponse<T> = {
 };
 
 type OrderProductionResponse = {
+	purchaseDbId: number | null;
   purchaseId: string | null;
   productName: string | null;
   purchaseQuantity: number | null;
@@ -63,7 +65,8 @@ export default function OrderProductionCreatePanel({ onCancel, submitButtonClass
     [],
   );
   const [form, setForm] = useState<OrderProductionForm>(initialForm);
-  const [orderNoOptions, setOrderNoOptions] = useState<string[]>([]);
+  const [orderNoOptions, setOrderNoOptions] = useState<OrderNoOption[]>([]);
+  const [selectedPurchaseDbId, setSelectedPurchaseDbId] = useState<number | null>(null);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [submitMessage, setSubmitMessage] = useState("");
 
@@ -78,11 +81,10 @@ export default function OrderProductionCreatePanel({ onCancel, submitButtonClass
         }
 
         const result = (await response.json()) as ApiResponse<OrderProductionResponse[]>;
-        const purchaseIds = result.data
-          .map((order) => order.purchaseId)
-          .filter((purchaseId): purchaseId is string => Boolean(purchaseId));
-
-        setOrderNoOptions(Array.from(new Set(purchaseIds)));
+		setOrderNoOptions(result.data.flatMap((order) =>
+		  order.purchaseDbId !== null && order.purchaseId
+			? [{ id: order.purchaseDbId, purchaseId: order.purchaseId, label: `${order.purchaseId}[${order.purchaseQuantity ?? 0}개]` }]
+			: []));
       } catch {
         setOrderNoOptions([]);
       }
@@ -121,7 +123,7 @@ export default function OrderProductionCreatePanel({ onCancel, submitButtonClass
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          purchaseId: form.orderNo,
+		  purchaseDbId: selectedPurchaseDbId,
           productCodePrefix: form.productCodePrefix,
           lot: form.lotNo,
           productionQuantity: form.instructionQuantity ? Number(form.instructionQuantity) : null,
@@ -151,11 +153,12 @@ export default function OrderProductionCreatePanel({ onCancel, submitButtonClass
 
   return (
     <form className="mx-5 mt-4 flex flex-col gap-2" onSubmit={handleSubmit}>
-      <OrderProductionFormCard
+	  <OrderProductionFormCard
         compactCreate
         form={form}
         onChange={updateForm}
-        orderNoOptions={orderNoOptions}
+		orderNoOptions={orderNoOptions}
+		onOrderNoSelect={(option) => setSelectedPurchaseDbId(option.id)}
         title=""
       />
 

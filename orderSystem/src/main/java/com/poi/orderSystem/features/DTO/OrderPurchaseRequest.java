@@ -1,6 +1,7 @@
 package com.poi.orderSystem.features.DTO;
 
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
+import com.poi.orderSystem.features.util.EnumUtil.ProductCategory;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -20,7 +21,7 @@ public class OrderPurchaseRequest {
 
 	private Integer quantity;
 
-	private Integer unitPrice;
+	private ProductCategory productCategory;
 	private String dueDate;
 	private ProcessStatus status;
 	private String note;

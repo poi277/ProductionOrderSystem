@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Order, PurchaseOption } from "../order/OrdersTypes";
+import type { Order, ProductCategory, PurchaseOption } from "../order/OrdersTypes";
 import ProductProcessProgress from "./ProductProcessProgress";
 import ProductionProcessProgress from "./ProductionProcessProgress";
 import { toProcessStatus } from "./processStatusUtils";
@@ -21,11 +21,11 @@ import DrawerActionButtons from "./DrawerActionButtons";
 import type { SidebarNotification } from "./OrderSidebarContext";
 
 type PurchaseForm = {
+  productCategory: ProductCategory | null;
   purchaseId: string;
   customer: string;
   productName: string;
   quantity: string;
-  price: string;
   dueDate: string;
   note: string;
 };
@@ -62,11 +62,11 @@ const EMPTY_PURCHASE: PurchaseDetail = {
   customer: "",
   productName: "",
   quantity: null,
-  price: null,
   dueDate: "",
   status: "PURCHASESUBMIT",
   note: "",
   createdTime: null,
+  productCategory: null,
 };
 
 export default function OrderUnifiedDetailDrawer({
@@ -119,13 +119,14 @@ export default function OrderUnifiedDetailDrawer({
     return () => window.removeEventListener("order-sidebar-notification", handleNotification);
   }, []);
 
-  const selectPurchaseForProduction = async (nextPurchaseId: string) => {
-    const selectedOption = purchaseOptions.find((option) => option.purchaseId === nextPurchaseId);
+  const selectPurchaseForProduction = async (nextPurchaseDbId: string) => {
+    const selectedOption = purchaseOptions.find((option) => String(option.id) === nextPurchaseDbId);
+    const nextPurchaseId = selectedOption?.purchaseId ?? "";
     setProductionForm((current) => ({ ...current, purchaseId: nextPurchaseId }));
     setPurchase(null);
     setForm(toForm(EMPTY_PURCHASE));
     setLoadedPurchaseDbId(null);
-    if (!nextPurchaseId || !selectedOption) return;
+    if (!nextPurchaseDbId || !selectedOption) return;
     setError("");
     setPurchase(selectedOption);
     setForm(toForm(selectedOption));
@@ -151,8 +152,12 @@ export default function OrderUnifiedDetailDrawer({
     setPendingProcess(null);
     setPendingDefect(null);
     setPendingOrderProcess(null);
-    setError("");
-    setMessage("");
+    // 저장 후 선택 항목이 닫힐 때는 하단 알림 카드를 유지한다.
+    // 다른 항목을 새로 선택한 경우에만 이전 알림을 초기화한다.
+    if (order) {
+      setError("");
+      setMessage("");
+    }
     if (!order) {
       setPendingOrderProcess("PURCHASESUBMIT");
     } else {
@@ -204,6 +209,20 @@ export default function OrderUnifiedDetailDrawer({
         ? hasProduction && productionProcessChanged
         : hasProduct && productChanged;
 
+  const clearSavedSelection = () => {
+    onClose();
+    setPurchase(null);
+    setProduct(null);
+    setForm(toForm(EMPTY_PURCHASE));
+    setProductionForm({ purchaseId: "", productCodePrefix: "", lot: "", quantity: "" });
+    setLoadedPurchaseDbId(null);
+    setLoadedProductionId(null);
+    setLoadedProductQr(null);
+    setPendingProcess(null);
+    setPendingDefect(null);
+    setPendingOrderProcess(purchaseEditable ? "PURCHASESUBMIT" : null);
+  };
+
   const saveChanges = async () => {
     setError("");
     setMessage("");
@@ -212,11 +231,11 @@ export default function OrderUnifiedDetailDrawer({
         if (hasPurchase && loadedPurchaseDbId !== null) {
           const previousPurchaseId = purchase?.purchaseId ?? form.purchaseId;
           const updated = await updatePurchaseDetail(loadedPurchaseDbId, {
+            productCategory: form.productCategory,
             purchaseId: form.purchaseId,
             customer: form.customer,
             productName: form.productName,
             quantity: numberOrNull(form.quantity),
-            unitPrice: numberOrNull(form.price),
             dueDate: form.dueDate || null,
             status: purchase?.status ?? "PURCHASESUBMIT",
             note: form.note,
@@ -224,28 +243,27 @@ export default function OrderUnifiedDetailDrawer({
           setPurchase(updated);
           setForm(toForm(updated));
           window.dispatchEvent(new CustomEvent("order-purchase-updated", { detail: { previousOrderNo: previousPurchaseId, order: updated } }));
+          clearSavedSelection();
           setMessage("발주서가 저장되었습니다.");
         } else {
           const response = await apiClient(orderEndpoints.create, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ purchaseId: form.purchaseId, customer: form.customer, productName: form.productName, quantity: numberOrNull(form.quantity), unitPrice: numberOrNull(form.price), dueDate: form.dueDate || null, note: form.note }),
+            body: JSON.stringify({ productCategory: form.productCategory, purchaseId: form.purchaseId, customer: form.customer, productName: form.productName, quantity: numberOrNull(form.quantity), dueDate: form.dueDate || null, note: form.note }),
           });
           if (!response.ok) throw new Error(await getApiErrorMessage(response, "발주서를 입력하지 못했습니다."));
           const result = (await response.json()) as { data: PurchaseDetail };
-          setPurchase(result.data);
-          setForm(toForm(result.data));
-          setLoadedPurchaseDbId(result.data.id);
           window.dispatchEvent(new CustomEvent("order-purchase-created", { detail: result.data }));
+          clearSavedSelection();
           setMessage("발주서가 저장되었습니다.");
         }
         return;
       }
 
       if (productionEditable) {
-        if (!productionForm.purchaseId) throw new Error("발주번호를 선택해 주세요.");
-        const productionBody = {
-          purchaseId: productionForm.purchaseId,
+        if (loadedPurchaseDbId === null) throw new Error("발주번호를 선택해 주세요.");
+		const productionBody = {
+		  purchaseDbId: loadedPurchaseDbId,
           productCodePrefix: productionForm.productCodePrefix || productionForm.purchaseId,
           lot: productionForm.lot,
           productionQuantity: numberOrNull(productionForm.quantity),
@@ -275,13 +293,16 @@ export default function OrderUnifiedDetailDrawer({
             setPendingDefect(Boolean(detail.isDefect));
           }
         }
+        clearSavedSelection();
         setMessage("생산지시가 저장되었습니다.");
         return;
       }
 
       if (processOverviewEditable) {
         if (!hasProduction || !pendingOrderProcess || !productionProcessChanged) return;
-        await updateProductionProcesses(purchase?.purchaseId ?? productionForm.purchaseId, pendingOrderProcess);
+		if (loadedPurchaseDbId === null) throw new Error("연결된 발주서를 찾을 수 없습니다.");
+		await updateProductionProcesses(loadedPurchaseDbId, pendingOrderProcess);
+        clearSavedSelection();
         setMessage("전체 공정 현황이 저장되었습니다.");
         return;
       }
@@ -297,6 +318,7 @@ export default function OrderUnifiedDetailDrawer({
           setPendingProcess(updated.process);
           setPendingDefect(Boolean(updated.isDefect));
         }
+        clearSavedSelection();
         setMessage("제품 공정이 저장되었습니다.");
       }
     } catch (caught) {
@@ -336,9 +358,10 @@ export default function OrderUnifiedDetailDrawer({
             form={form}
             productionMode={productionEditable}
             purchaseOptions={purchaseOptions}
-            selectedPurchaseId={productionForm.purchaseId}
+            selectedPurchaseDbId={loadedPurchaseDbId}
             onPurchaseSelect={(value) => void selectPurchaseForProduction(value)}
             onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))}
+            onCategoryChange={(productCategory) => setForm((current) => ({ ...current, productCategory }))}
           />
           <ProductionSection
             active={productionEditable}
@@ -372,18 +395,19 @@ export default function OrderUnifiedDetailDrawer({
   );
 }
 
-function PurchaseOrderSection({ active, form, productionMode, purchaseOptions, selectedPurchaseId, onPurchaseSelect, onChange }: {
+function PurchaseOrderSection({ active, form, productionMode, purchaseOptions, selectedPurchaseDbId, onPurchaseSelect, onChange, onCategoryChange }: {
   active: boolean;
   form: PurchaseForm;
   productionMode: boolean;
-  purchaseOptions: Array<{ id: number; purchaseId: string; quantity: number | null }>;
-  selectedPurchaseId: string;
+  purchaseOptions: PurchaseOption[];
+  selectedPurchaseDbId: number | null;
   onPurchaseSelect: (value: string) => void;
   onChange: (key: keyof PurchaseForm, value: string) => void;
+  onCategoryChange: (value: ProductCategory | null) => void;
 }) {
   return (
     <Section active={active} category="purchase" height="h-[370px] shrink-0" title="발주 기본 정보">
-      <InformationGrid form={form} editing={active} purchaseOptions={productionMode ? purchaseOptions : undefined} selectedPurchaseId={selectedPurchaseId} onPurchaseSelect={productionMode ? onPurchaseSelect : undefined} onChange={onChange} />
+      <InformationGrid form={form} editing={active} purchaseOptions={productionMode ? purchaseOptions : undefined} selectedPurchaseDbId={selectedPurchaseDbId} onPurchaseSelect={productionMode ? onPurchaseSelect : undefined} onChange={onChange} onCategoryChange={onCategoryChange} />
     </Section>
   );
 }
@@ -468,31 +492,44 @@ function EditableRow({ active, category, label, onChange, type = "text", value }
   return <label className="grid grid-cols-[88px_1fr] items-center gap-2"><span className="text-[13px] font-bold text-slate-600">{label}</span><input className={active ? editableFieldClass(category) : readonlyFieldClass} disabled={!active} min={type === "number" ? 1 : undefined} onChange={(event) => onChange(event.target.value)} required type={type} value={value} /></label>;
 }
 
-function InformationGrid({ form, editing, purchaseOptions, selectedPurchaseId, onPurchaseSelect, onChange }: {
+function InformationGrid({ form, editing, purchaseOptions, selectedPurchaseDbId, onPurchaseSelect, onChange, onCategoryChange }: {
   form: PurchaseForm;
   editing: boolean;
-  purchaseOptions?: Array<{ id: number; purchaseId: string; quantity: number | null }>;
-  selectedPurchaseId?: string;
+  purchaseOptions?: PurchaseOption[];
+  selectedPurchaseDbId?: number | null;
   onPurchaseSelect?: (value: string) => void;
   onChange: (key: keyof PurchaseForm, value: string) => void;
+  onCategoryChange: (value: ProductCategory | null) => void;
 }) {
   const items: Array<[string, keyof PurchaseForm | null, string]> = [
     ["발주번호", "purchaseId", form.purchaseId],
     ["고객명", "customer", form.customer],
     ["품명", "productName", form.productName],
-    ["발주수량", "quantity", form.quantity],
-    ["단가", "price", form.price],
     ["납기일", "dueDate", form.dueDate],
     ["비고", "note", form.note],
   ];
-  return <dl className="grid grid-cols-1 gap-y-3">{items.map(([label, key, value]) => {
+  const renderItem = ([label, key, value]: [string, keyof PurchaseForm | null, string]) => {
     if (key === "purchaseId" && purchaseOptions && onPurchaseSelect) {
-      return <div className="grid grid-cols-[88px_1fr] items-center gap-2" key={label}><dt className="text-[13px] font-bold text-slate-600">{label}</dt><dd><select className={editableFieldClass("production")} onChange={(event) => onPurchaseSelect(event.target.value)} value={selectedPurchaseId ?? ""}><option value="">발주번호 선택</option>{purchaseOptions.map((option) => <option key={option.purchaseId} value={option.purchaseId}>{option.purchaseId}</option>)}</select></dd></div>;
+      return <div className="grid grid-cols-[88px_1fr] items-center gap-2" key={label}><dt className="text-[13px] font-bold text-slate-600">{label}</dt><dd><select className={editableFieldClass("production")} onChange={(event) => onPurchaseSelect(event.target.value)} value={selectedPurchaseDbId ?? ""}><option value="">발주번호 선택</option>{purchaseOptions.map((option) => <option key={option.id} value={option.id}>{option.purchaseId}({option.customer || "고객명 없음"})[{option.quantity ?? 0}개]</option>)}</select></dd></div>;
     }
     const canEdit = editing && key !== null;
-    const displayValue = !editing && key === "quantity" ? `${formatNumber(Number(value))}개` : !editing && key === "price" ? formatMoney(Number(value)) : value || "-";
-    return <div className="grid grid-cols-[88px_1fr] items-center gap-2" key={label}><dt className="text-[13px] font-bold text-slate-600">{label}</dt><dd><input className={canEdit ? editableFieldClass("purchase") : readonlyFieldClass} readOnly={!canEdit} type={canEdit && (key === "quantity" || key === "price") ? "number" : canEdit && key === "dueDate" ? "date" : "text"} value={canEdit ? value : displayValue} onChange={(event) => key && onChange(key, event.target.value)} /></dd></div>;
-  })}</dl>;
+    const displayValue = value || "-";
+    return <div className="grid grid-cols-[88px_1fr] items-center gap-2" key={label}><dt className="text-[13px] font-bold text-slate-600">{label}</dt><dd><input className={canEdit ? editableFieldClass("purchase") : readonlyFieldClass} readOnly={!canEdit} type={canEdit && key === "dueDate" ? "date" : "text"} value={canEdit ? value : displayValue} onChange={(event) => key && onChange(key, event.target.value)} /></dd></div>;
+  };
+  return <dl className="grid grid-cols-1 gap-y-3">
+    <div className="grid grid-cols-[88px_1fr] items-center gap-2">
+      <dt className="text-[13px] font-bold text-slate-600">제품 카테고리</dt>
+      <dd>
+        <select className={editing ? editableFieldClass("purchase") : readonlyFieldClass} disabled={!editing} onChange={(event) => onCategoryChange(event.target.value ? event.target.value as ProductCategory : null)} value={form.productCategory ?? ""}>
+          <option value="">제품 카테고리 선택</option>
+          {PRODUCT_CATEGORIES.map(({ label, value }) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </dd>
+    </div>
+    {items.slice(0, 3).map(renderItem)}
+    <EditableRow active={editing} category="purchase" label="발주수량" type="number" value={form.quantity} onChange={(value) => onChange("quantity", value)} />
+    {items.slice(3).map(renderItem)}
+  </dl>;
 }
 
 function ProductSection({ product, editing, pending, pendingDefect, onChange, onDefectChange }: { product: ProductDetail | null; editing: boolean; pending: ProcessStatus | null; pendingDefect: boolean | null; onChange: (value: ProcessStatus) => void; onDefectChange: (value: boolean) => void }) {
@@ -506,11 +543,11 @@ function toPurchaseDetail(order: Order): PurchaseDetail {
     customer: order.customer && order.customer !== "-" ? order.customer : null,
     productName: order.product && order.product !== "-" ? order.product : null,
     quantity: toNullableNumber(order.quantity),
-    price: order.purchasePrice ?? toNullableNumber(order.unitPrice),
     dueDate: order.purchaseDueDate ?? null,
     status: toProcessStatus(order.purchaseStatus),
     note: order.purchaseNote ?? null,
     createdTime: order.purchaseCreatedTime ?? order.createdAt ?? null,
+    productCategory: order.productCategory ?? null,
   };
 }
 
@@ -565,10 +602,14 @@ function editableFieldClass(category: "purchase" | "production" | "product") {
   const focus = { purchase: "focus:border-sky-500", production: "focus:border-amber-500", product: "focus:border-violet-500" }[category];
   return `h-8 w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 text-[13px] font-semibold outline-none ${focus}`;
 }
-function toForm(purchase: PurchaseDetail): PurchaseForm { return { purchaseId: purchase.purchaseId, customer: purchase.customer ?? "", productName: purchase.productName ?? "", quantity: String(purchase.quantity ?? ""), price: String(purchase.price ?? ""), dueDate: purchase.dueDate ?? "", note: purchase.note ?? "" }; }
+function toForm(purchase: PurchaseDetail): PurchaseForm { return { productCategory: purchase.productCategory ?? null, purchaseId: purchase.purchaseId, customer: purchase.customer ?? "", productName: purchase.productName ?? "", quantity: String(purchase.quantity ?? ""), dueDate: purchase.dueDate ?? "", note: purchase.note ?? "" }; }
+const PRODUCT_CATEGORIES: Array<{ value: ProductCategory; label: string }> = [
+  { value: "AUTOMATIC_DAMPER", label: "오토댐퍼" },
+  { value: "LEAK_SENSOR", label: "리크센서" },
+  { value: "DISPENSER", label: "디스펜서" },
+  { value: "GATE", label: "게이트" },
+];
 function numberOrNull(value: string) { return value === "" ? null : Number(value); }
-function formatNumber(value: number) { return Number.isFinite(value) ? value.toLocaleString("ko-KR") : "-"; }
-function formatMoney(value: number) { return `${formatNumber(value)}원`; }
 function productCodePrefix(productQr?: string | null, fallback?: string | null) {
   if (!productQr) return fallback ?? "";
   const separatorIndex = productQr.lastIndexOf("-");

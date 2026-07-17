@@ -17,5 +17,6 @@ export interface ProductQrDetail {
   defect: boolean;
   createdTime: string;
   processHistories: ProductProcessHistory[];
+  productCategory: import("../order/OrdersTypes").ProductCategory | null;
 }
 

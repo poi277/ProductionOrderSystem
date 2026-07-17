@@ -34,7 +34,6 @@ type ProductionOrder = {
   dueDate: string;
   createdTime: string;
   currentProcess: string;
-  purchasePrice?: number | null;
   purchaseStatus?: string | null;
   purchaseNote?: string | null;
   purchaseCreatedTime?: string | null;
@@ -48,7 +47,6 @@ type ProductionOrderResponse = {
   customer: string | null;
   dueDate: string | null;
   productName: string | null;
-  price: number | null;
   status: string | null;
   statusLabel: string | null;
   note: string | null;
@@ -150,15 +148,15 @@ const productionOrderColumns: DataListColumn<ProductionOrder>[] = [
     render: (row) => row.qrQuantity,
   },
   {
-    header: "비고",
-    key: "memo",
-    render: (row) => row.memo,
-  },
-  {
     align: "center",
     header: "현재 공정",
     key: "currentProcess",
     render: (row) => row.currentProcess,
+  },
+  {
+    header: "비고",
+    key: "memo",
+    render: (row) => row.memo,
   },
 ];
 
@@ -363,7 +361,6 @@ function toSidebarOrder(order: ProductionOrder): Order {
     id: order.id,
     purchaseDbId: order.purchaseDbId,
     productionDbId: order.productionDbId,
-    purchasePrice: order.purchasePrice,
     purchaseStatus: order.purchaseStatus,
     purchaseNote: order.purchaseNote,
     purchaseCreatedTime: order.purchaseCreatedTime,
@@ -379,7 +376,6 @@ function toSidebarOrder(order: ProductionOrder): Order {
     productQr: order.productQr,
     quantity: order.instructionQuantity,
     instructionQuantity: order.instructionQuantity,
-    unitPrice: "-",
     dueDate: order.dueDate,
     status: "-",
     createdAt: order.createdTime,
@@ -405,7 +401,6 @@ function toProductionOrderRow(order: OrderProductionForm, index: number): Produc
     dueDate: formatKoreanDateWithoutYear(order.dueDate),
     createdTime: "-",
     currentProcess: "생산 지시",
-    purchasePrice: null,
     purchaseStatus: null,
     purchaseNote: null,
     purchaseCreatedTime: null,
@@ -436,7 +431,6 @@ function toProductionOrderRowFromApi(order: ProductionOrderResponse, index: numb
     dueDate: formatKoreanDateWithoutYear(order.dueDate),
     createdTime: formatDateTime(order.createdTime),
     currentProcess: getCurrentProcess(order.processCounts, order.processLabels, order.statusLabel),
-    purchasePrice: order.price,
     purchaseStatus: order.status,
     purchaseNote: order.note,
     purchaseCreatedTime: order.purchaseCreatedTime,

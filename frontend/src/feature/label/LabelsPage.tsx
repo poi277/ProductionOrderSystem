@@ -32,7 +32,6 @@ type LabelRow = {
   updatedAt: string;
   customer: string;
   quantity: number | null;
-  price: number | null;
   dueDate: string | null;
   purchaseStatus: string | null;
   note: string | null;
@@ -57,7 +56,6 @@ type LabelResponse = {
   updatedAt: string | null;
   customer: string | null;
   quantity: number | null;
-  price: number | null;
   dueDate: string | null;
   purchaseStatus: string | null;
   note: string | null;
@@ -242,9 +240,7 @@ function toSidebarOrder(row: LabelRow): Order {
     customer: row.customer,
     product: row.product,
     quantity: row.quantity == null ? "-" : String(row.quantity),
-    unitPrice: row.price == null ? "-" : String(row.price),
     dueDate: row.dueDate ?? "-",
-    purchasePrice: row.price,
     purchaseDueDate: row.dueDate,
     purchaseStatus: row.purchaseStatus,
     purchaseNote: row.note,
@@ -271,7 +267,7 @@ function toLabelRow(label: OrderLabelForm, index: number): LabelRow {
     printedAt: toDisplayDateTime(label.printedAt),
     createdAt: toDisplayDateTime(label.createdAt),
     updatedAt: toDisplayDateTime(label.updatedAt),
-    customer: "-", quantity: null, price: null, dueDate: null, purchaseStatus: null, note: null,
+    customer: "-", quantity: null, dueDate: null, purchaseStatus: null, note: null,
     purchaseCreatedTime: null, productQrQuantity: null, process: null, isDefect: false,
   };
 }
@@ -294,7 +290,6 @@ function toLabelRowFromApi(label: LabelResponse, index: number): LabelRow {
     updatedAt: toDisplayDateTime(label.updatedAt ?? ""),
     customer: label.customer ?? "-",
     quantity: label.quantity,
-    price: label.price,
     dueDate: label.dueDate,
     purchaseStatus: label.purchaseStatus,
     note: label.note,

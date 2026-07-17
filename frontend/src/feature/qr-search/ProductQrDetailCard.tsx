@@ -1,6 +1,7 @@
 import { formatKoreanDateTime, formatKoreanShortDateTime } from "../common/dateFormat";
 import { PRODUCT_PROCESS_LABELS, PRODUCT_PROCESS_STEPS } from "../ordersidebar/processStatusUtils";
 import type { ProductProcessHistory, ProductProcessStatus, ProductQrDetail } from "./qrSearchTypes";
+import { productCategoryBadgeClass, productCategoryLabel } from "../common/productCategory";
 
 export default function ProductQrDetailCard({ product }: { product: ProductQrDetail }) {
   const histories = [...product.processHistories].sort((a, b) =>
@@ -25,7 +26,8 @@ export default function ProductQrDetailCard({ product }: { product: ProductQrDet
         </div>
       </header>
 
-      <section className="grid gap-x-8 gap-y-3 border-b border-slate-200 px-5 py-4 text-sm sm:grid-cols-2">
+      <section className="grid gap-x-4 gap-y-2 border-b border-slate-200 px-5 py-4 text-sm sm:grid-cols-2">
+        <div className="grid min-h-8 grid-cols-[100px_1fr] items-center gap-3"><dt className="font-bold text-slate-400">제품군</dt><dd><span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${productCategoryBadgeClass(product.productCategory)}`}>{productCategoryLabel(product.productCategory)}</span></dd></div>
         <Detail label="발주번호" value={product.purchaseId} />
         <Detail label="고객사" value={product.customer} />
         <Detail label="품명" value={product.productName} />
@@ -102,7 +104,7 @@ function historyRows(histories: ProductProcessHistory[]) {
 }
 
 function Detail({ label, value }: { label: string; value?: string | null }) {
-  return <div className="grid grid-cols-[100px_1fr] gap-3"><dt className="font-bold text-slate-400">{label}</dt><dd className="break-words font-semibold text-slate-700">{value || "-"}</dd></div>;
+  return <div className="grid min-h-8 grid-cols-[100px_1fr] items-center gap-3"><dt className="font-bold text-slate-400">{label}</dt><dd className="break-words font-semibold text-slate-700">{value || "-"}</dd></div>;
 }
 
 function Badge({ children, tone }: { children: React.ReactNode; tone: "red" | "green" | "blue" | "slate" | "amber" }) {

@@ -30,7 +30,6 @@ type ProductProcess = {
   processSequence: string;
   processStatus: string | null;
   isDefect: boolean;
-  purchasePrice: number | null;
   purchaseStatus: string | null;
   purchaseNote: string | null;
   purchaseCreatedTime: string | null;
@@ -51,7 +50,6 @@ type ProductProcessResponse = {
   processName: string | null;
   processSequence: string | null;
   isDefect: boolean | null;
-  price: number | null;
   purchaseStatus: string | null;
   note: string | null;
   purchaseCreatedTime: string | null;
@@ -277,7 +275,6 @@ function toSidebarOrder(row: ProductProcess): Order {
     processSequence: row.processSequence,
     productProcessStatus: row.processStatus ?? undefined,
     isDefect: row.isDefect,
-    purchasePrice: row.purchasePrice,
     purchaseStatus: row.purchaseStatus,
     purchaseNote: row.purchaseNote,
     purchaseCreatedTime: row.purchaseCreatedTime,
@@ -288,7 +285,6 @@ function toSidebarOrder(row: ProductProcess): Order {
     product: row.productName,
     quantity: row.quantity,
     instructionQuantity: row.qrQuantity,
-    unitPrice: "-",
     dueDate: row.dueDate ?? "-",
     status: "-",
     memo: `QR ${row.productQr}, LOT ${row.lotNo}, process ${row.processSequence}`,
@@ -309,7 +305,6 @@ function toProductProcessRow(process: OrderProcessForm, index: number): ProductP
     processSequence: toProductProcessLabel(process.processSequence),
     processStatus: process.processSequence,
     isDefect: false,
-    purchasePrice: null,
     purchaseStatus: null,
     purchaseNote: null,
     purchaseCreatedTime: null,
@@ -333,7 +328,6 @@ function toProductProcessRowFromApi(process: ProductProcessResponse, index: numb
     processSequence: process.processName ?? process.processSequence ?? toProductProcessLabel(process.process),
     processStatus: process.process,
     isDefect: Boolean(process.isDefect),
-    purchasePrice: process.price,
     purchaseStatus: process.purchaseStatus,
     purchaseNote: process.note,
     purchaseCreatedTime: process.purchaseCreatedTime,

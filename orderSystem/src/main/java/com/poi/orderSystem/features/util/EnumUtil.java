@@ -8,6 +8,20 @@ public class EnumUtil {
 		CANCEL,
 	}
 
+	public enum ProductCategory {
+		AUTOMATIC_DAMPER("오토댐퍼"), LEAK_SENSOR("리크센서"), DISPENSER("디스펜서"), GATE("게이트");
+
+		private final String label;
+
+		ProductCategory(String label) {
+			this.label = label;
+		}
+
+		public String getLabel() {
+			return label;
+		}
+	}
+
 	public enum ProcessStatus {
 		PURCHASESUBMIT("발주서 접수"),
 		INSTRUCTION("생산지시"),
@@ -31,7 +45,6 @@ public class EnumUtil {
 
 	public enum Role {
 		USER("일반"), ADMIN("관리자");
-
 		private final String label;
 
 		Role(String label) {

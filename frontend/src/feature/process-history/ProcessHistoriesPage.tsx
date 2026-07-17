@@ -12,7 +12,8 @@ import type { DataListColumn } from "../common/DataListTable";
 import type { ListOption, SortCondition } from "../common/ListToolbar";
 import { compareNumericText, matchesSearch, sortByConditions, updateSortConditions } from "../common/listDataUtils";
 import { useRowSelection } from "../common/useRowSelection";
-import type { Order } from "../order/OrdersTypes";
+import type { Order, ProductCategory } from "../order/OrdersTypes";
+import { productCategoryBadgeClass, productCategoryLabel } from "../common/productCategory";
 import type { OrderProcessForm } from "../ordersidebar/OrderProcessFormCard";
 import type { ProcessStatus } from "../ordersidebar/orderDetailApi";
 
@@ -30,11 +31,11 @@ type ProductRow = {
   processStatus: string | null;
   judgment: string;
   completedTime: string;
-  purchasePrice: number | null;
   purchaseStatus: string | null;
   purchaseNote: string | null;
   purchaseCreatedTime: string | null;
   dueDate: string | null;
+  productCategory: ProductCategory | null;
 };
 
 type ProductResponse = {
@@ -50,11 +51,11 @@ type ProductResponse = {
   process: string | null;
   isDefect: boolean | null;
   createdTime: string | null;
-  price: number | null;
   purchaseStatus: string | null;
   note: string | null;
   purchaseCreatedTime: string | null;
   dueDate: string | null;
+  productCategory: ProductCategory | null;
 };
 
 type ApiResponse<T> = { success: boolean; message: string; data: T };
@@ -73,6 +74,7 @@ function batchProcessLabel(process: ProcessStatus) {
 }
 
 const sortButtons: ListOption<SortKey>[] = [
+  { label: "제품군", key: "productCategory" },
   { label: "발주번호", key: "purchaseId" },
   { label: "고객사", key: "customer" },
   { label: "품명", key: "productName" },
@@ -85,6 +87,7 @@ const sortButtons: ListOption<SortKey>[] = [
 
 const columns: DataListColumn<ProductRow>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
+  { align: "center", header: "제품군", key: "productCategory", render: (row) => <span className={`inline-flex rounded-full border px-3 py-1 font-bold ${productCategoryBadgeClass(row.productCategory)}`}>{productCategoryLabel(row.productCategory)}</span> },
   { align: "center", header: "발주번호", key: "purchaseId", render: (row) => row.purchaseId },
   { align: "center", header: "고객사", key: "customer", render: (row) => row.customer },
   { header: "품명", key: "productName", render: (row) => row.productName },
@@ -158,12 +161,12 @@ export default function ProcessHistoriesPage() {
   }, []);
 
   const searchOptions = useMemo(
-    () => Array.from(new Set(products.map((row) => String(row[searchField])))),
+    () => Array.from(new Set(products.map((row) => String(getProductValue(row, searchField))))),
     [products, searchField],
   );
   const sortedRows = useMemo(() => {
-    const filteredRows = products.filter((row) => matchesSearch(row[searchField], searchText));
-    return sortByConditions(filteredRows, sortConditions, (row, key) => row[key], compareNumericText);
+    const filteredRows = products.filter((row) => matchesSearch(getProductValue(row, searchField), searchText));
+    return sortByConditions(filteredRows, sortConditions, getProductValue, compareNumericText);
   }, [products, searchField, searchText, sortConditions]);
 
   const handleToggleCheckbox = (row: ProductRow) => {
@@ -317,6 +320,10 @@ export default function ProcessHistoriesPage() {
   );
 }
 
+function getProductValue(row: ProductRow, key: SortKey) {
+  return key === "productCategory" ? productCategoryLabel(row.productCategory) : row[key];
+}
+
 function toSidebarOrder(row: ProductRow): Order {
   return {
     id: row.id,
@@ -336,13 +343,12 @@ function toSidebarOrder(row: ProductRow): Order {
     processSequence: row.processSequence,
     productProcessStatus: row.processStatus ?? undefined,
     isDefect: row.judgment === "불량",
-    purchasePrice: row.purchasePrice,
     purchaseStatus: row.purchaseStatus,
     purchaseNote: row.purchaseNote,
     purchaseCreatedTime: row.purchaseCreatedTime,
     purchaseDueDate: row.dueDate,
+    productCategory: row.productCategory,
     judgment: row.judgment,
-    unitPrice: "-",
     dueDate: row.dueDate ?? "-",
     status: row.judgment,
     memo: "-",
@@ -374,10 +380,10 @@ function toProductRow(product: ProductResponse, index: number): ProductRow {
     processStatus: product.process,
     judgment: product.isDefect ? "불량" : "정상",
     completedTime: formatKoreanDayTime(product.createdTime),
-    purchasePrice: product.price,
     purchaseStatus: product.purchaseStatus,
     purchaseNote: product.note,
     purchaseCreatedTime: product.purchaseCreatedTime,
     dueDate: product.dueDate,
+    productCategory: product.productCategory ?? null,
   };
 }

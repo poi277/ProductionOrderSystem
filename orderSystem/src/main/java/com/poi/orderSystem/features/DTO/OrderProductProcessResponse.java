@@ -4,6 +4,7 @@ import com.poi.orderSystem.features.entity.OrderProduct;
 import com.poi.orderSystem.features.entity.OrderProduction;
 import com.poi.orderSystem.features.entity.OrderPurchase;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
+import com.poi.orderSystem.features.util.EnumUtil.ProductCategory;
 
 import lombok.Getter;
 
@@ -17,7 +18,7 @@ public class OrderProductProcessResponse {
 	private final String productionId;
 	private final String customer;
 	private final String productName;
-	private final Integer price;
+	private final ProductCategory productCategory;
 	private final String dueDate;
 	private final ProcessStatus purchaseStatus;
 	private final String note;
@@ -44,7 +45,7 @@ public class OrderProductProcessResponse {
 		this.productionId = this.purchaseId;
 		this.customer = purchase == null ? null : purchase.getCustomer();
 		this.productName = purchase == null ? null : purchase.getProductName();
-		this.price = purchase == null ? null : purchase.getPrice();
+		this.productCategory = purchase == null ? null : purchase.getProductCategory();
 		this.dueDate = purchase == null ? null : purchase.getDueDate();
 		this.purchaseStatus = purchase == null ? null : purchase.getStatus();
 		this.note = purchase == null ? null : purchase.getNote();

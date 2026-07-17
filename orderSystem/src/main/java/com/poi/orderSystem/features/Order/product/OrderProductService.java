@@ -57,10 +57,10 @@ public class OrderProductService {
 
 	@Transactional
 	public List<OrderProductProcessResponse> updateProductProcessesByProduction(
-			String purchaseId,
+			Long purchaseDbId,
 			OrderProductProcessRequest request
 	) {
-		List<OrderProduct> products = orderProductRepository.findByPurchaseIdWithProductionAndPurchase(purchaseId);
+		List<OrderProduct> products = orderProductRepository.findByPurchaseDbIdWithProductionAndPurchase(purchaseDbId);
 
 		if (request.getProcessName() == null) {
 			throw new IllegalArgumentException("변경할 공정 상태가 필요합니다.");
@@ -73,7 +73,7 @@ public class OrderProductService {
 					orderProductProcessHistoryRepository::save);
 		}
 
-		updatePurchaseStatus(purchaseId, request.getProcessName());
+		updatePurchaseStatus(purchaseDbId, request.getProcessName());
 
 		return products.stream().map(OrderProductProcessResponse::from).toList();
 	}
@@ -106,6 +106,7 @@ public class OrderProductService {
 						.purchaseId(product.getProduction().getPurchaseId())
 						.customer(product.getProduction().getPurchase().getCustomer())
 						.productName(product.getProduction().getPurchase().getProductName())
+						.productCategory(product.getProduction().getPurchase().getProductCategory())
 						.lot(product.getProduction().getLot())
 						.currentProcess(product.getProcess())
 						.defect(product.isDefect())
@@ -121,7 +122,7 @@ public class OrderProductService {
 				.findByProcessWithProductionAndPurchaseOrderByCreatedTimeDesc(ProcessStatus.PACKAGING)
 				.stream()
 				.collect(java.util.stream.Collectors.groupingBy(
-						product -> product.getProduction().getPurchaseId(),
+						product -> product.getProduction().getPurchase().getId(),
 						java.util.LinkedHashMap::new,
 						java.util.stream.Collectors.toList()))
 				.values()).stream()
@@ -158,7 +159,7 @@ public class OrderProductService {
 	public List<OrderShipmentResponse> completeShipments(List<String> productQrs) {
 		List<OrderProduct> completedProducts = new ArrayList<>();
 		List<OrderProductProcessHistory> completedProcessHistories = new ArrayList<>();
-		Set<String> purchaseIds = new LinkedHashSet<>();
+		Set<Long> purchaseDbIds = new LinkedHashSet<>();
 		Map<String, OrderProduct> productsByQr = new HashMap<>();
 		orderProductRepository.findAllByProductQrInWithProductionAndPurchase(productQrs)
 				.forEach(product -> productsByQr.put(product.getProductQr(), product));
@@ -182,8 +183,8 @@ public class OrderProductService {
 
 			completedProducts.add(product);
 
-			if (production != null && hasText(production.getPurchaseId())) {
-				purchaseIds.add(production.getPurchaseId());
+			if (production != null && production.getPurchase() != null) {
+				purchaseDbIds.add(production.getPurchase().getId());
 			}
 		}
 		if (!completedProcessHistories.isEmpty()) {
@@ -193,7 +194,7 @@ public class OrderProductService {
 			orderProductRepository.saveAll(completedProducts);
 		}
 
-		purchaseIds.forEach(this::syncPurchaseStatusByPurchaseId);
+		purchaseDbIds.forEach(this::syncPurchaseStatusByPurchaseDbId);
 
 		List<OrderShipmentResponse> responses = completedProducts.stream()
 				.map(OrderShipmentResponse::from).toList();
@@ -259,12 +260,13 @@ public class OrderProductService {
 	private OrderProductProcessHistory createCompletedProcessHistory(
 			OrderProduct product, ProcessStatus completedProcess, boolean defect) {
 		if (completedProcess == null || product.getProduction() == null
-				|| !hasText(product.getProduction().getPurchaseId())) {
+				|| product.getProduction().getPurchase() == null) {
 			return null;
 		}
 		OrderProductProcessHistory history = new OrderProductProcessHistory();
 		history.setProductQr(product.getProductQr());
 		history.setPurchaseId(product.getProduction().getPurchaseId());
+		history.setPurchaseDbId(product.getProduction().getPurchase().getId());
 		history.setProcess(completedProcess);
 		history.setDefect(defect);
 		return history;
@@ -277,22 +279,22 @@ public class OrderProductService {
 	private void syncPurchaseStatusByProducts(OrderProduct product) {
 		OrderProduction production = product.getProduction();
 
-		if (production == null || !hasText(production.getPurchaseId())) {
+		if (production == null || production.getPurchase() == null) {
 			return;
 		}
 
-		syncPurchaseStatusByPurchaseId(production.getPurchaseId());
+		syncPurchaseStatusByPurchaseDbId(production.getPurchase().getId());
 	}
 
-	private void syncPurchaseStatusByPurchaseId(String purchaseId) {
-		if (!hasText(purchaseId)) {
+	private void syncPurchaseStatusByPurchaseDbId(Long purchaseDbId) {
+		if (purchaseDbId == null) {
 			return;
 		}
 
-		List<OrderProduct> products = orderProductRepository.findByProductionPurchasePurchaseId(purchaseId);
+		List<OrderProduct> products = orderProductRepository.findByProduction_Purchase_Id(purchaseDbId);
 
 		if (products.isEmpty()) {
-			updatePurchaseStatus(purchaseId, ProcessStatus.INSTRUCTION);
+			updatePurchaseStatus(purchaseDbId, ProcessStatus.INSTRUCTION);
 			return;
 		}
 
@@ -301,7 +303,7 @@ public class OrderProductService {
 				.filter(status -> status != null)
 				.min(Comparator.comparingInt(Enum::ordinal)).orElse(ProcessStatus.INSTRUCTION);
 
-		updatePurchaseStatus(purchaseId, slowestStatus);
+		updatePurchaseStatus(purchaseDbId, slowestStatus);
 	}
 
 	private void validateEditableProcess(ProcessStatus process) {
@@ -310,12 +312,12 @@ public class OrderProductService {
 		}
 	}
 
-	private void updatePurchaseStatus(String purchaseId, ProcessStatus status) {
-		if (!hasText(purchaseId) || status == null) {
+	private void updatePurchaseStatus(Long purchaseDbId, ProcessStatus status) {
+		if (purchaseDbId == null || status == null) {
 			return;
 		}
 
-		orderPurchaseRepository.findByPurchaseId(purchaseId).ifPresent((purchase) -> {
+		orderPurchaseRepository.findById(purchaseDbId).ifPresent((purchase) -> {
 			purchase.setStatus(status);
 			orderPurchaseRepository.save(purchase);
 		});

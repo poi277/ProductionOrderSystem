@@ -10,9 +10,11 @@ import { useOrderSidebar } from "../ordersidebar/OrderSidebarContext";
 import { purchaseHistoryEndpoints } from "../../../lib/endpoints";
 import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
 import { useApiMutationRevision } from "../../../util/apiMutationStore";
+import type { ProductCategory } from "../order/OrdersTypes";
+import { productCategoryBadgeClass, productCategoryLabel } from "../common/productCategory";
 
 type Source = "PURCHASE" | "HISTORY";
-type SortKey = "orderNo" | "customer" | "product" | "quantity" | "dueDate" | "memo";
+type SortKey = "orderNo" | "productCategory" | "customer" | "product" | "quantity" | "dueDate" | "memo";
 
 type HistoryResponse = {
   id: number;
@@ -21,11 +23,11 @@ type HistoryResponse = {
   customer: string | null;
   productName: string | null;
   quantity: number | null;
-  price: number | null;
   dueDate: string | null;
   status: string | null;
   note: string | null;
   createdTime: string | null;
+  productCategory: ProductCategory | null;
 };
 
 type HistoryRow = {
@@ -40,11 +42,13 @@ type HistoryRow = {
   dueDate: string;
   memo: string;
   createdTime: string | null;
+  productCategory: ProductCategory | null;
 };
 
 type ApiResponse<T> = { success: boolean; message: string; data: T };
 
 const options: ListOption<SortKey>[] = [
+  { label: "제품군", key: "productCategory" },
   { label: "발주번호", key: "orderNo" },
   { label: "고객사", key: "customer" },
   { label: "품명", key: "product" },
@@ -55,6 +59,7 @@ const options: ListOption<SortKey>[] = [
 
 const columns: DataListColumn<HistoryRow>[] = [
   { align: "center", header: "No.", key: "no", render: (row) => row.no },
+  { align: "center", header: "제품군", key: "productCategory", render: (row) => <span className={`inline-flex rounded-full border px-3 py-1 font-bold ${productCategoryBadgeClass(row.productCategory)}`}>{productCategoryLabel(row.productCategory)}</span> },
   { align: "center", header: "발주번호", key: "orderNo", render: (row) => row.orderNo },
   { align: "center", header: "고객사", key: "customer", render: (row) => row.customer },
   { header: "품명", key: "product", render: (row) => row.product },
@@ -96,11 +101,11 @@ export default function OrderPurchaseHistoryPage() {
   }, [mutationRevision]);
 
   const filtered = rows.filter((row) =>
-    row[searchField].toLowerCase().includes(searchText.toLowerCase()),
+    historyValue(row, searchField).toLowerCase().includes(searchText.toLowerCase()),
   );
   const sorted = [...filtered].sort((a, b) => {
     for (const condition of sortConditions) {
-      const result = String(a[condition.key]).localeCompare(String(b[condition.key]), "ko", { numeric: true });
+      const result = historyValue(a, condition.key).localeCompare(historyValue(b, condition.key), "ko", { numeric: true });
       if (result !== 0) return condition.direction === "asc" ? result : -result;
     }
     return 0;
@@ -145,7 +150,7 @@ export default function OrderPurchaseHistoryPage() {
           onDelete={handleDelete}
           options={options}
           searchField={searchField}
-          searchOptions={Array.from(new Set(rows.map((row) => row[searchField])))}
+          searchOptions={Array.from(new Set(rows.map((row) => historyValue(row, searchField))))}
           searchText={searchText}
           selectedCount={checkedIds.length}
           sortConditions={sortConditions}
@@ -170,6 +175,10 @@ export default function OrderPurchaseHistoryPage() {
   );
 }
 
+function historyValue(row: HistoryRow, key: SortKey) {
+  return key === "productCategory" ? productCategoryLabel(row.productCategory) : String(row[key] ?? "");
+}
+
 function toRow(item: HistoryResponse, index: number): HistoryRow {
   return {
     rowId: `${item.source}-${item.id}`,
@@ -183,6 +192,7 @@ function toRow(item: HistoryResponse, index: number): HistoryRow {
     dueDate: formatKoreanDateWithoutYear(item.dueDate),
     memo: item.note ?? "-",
     createdTime: item.createdTime,
+    productCategory: item.productCategory ?? null,
   };
 }
 

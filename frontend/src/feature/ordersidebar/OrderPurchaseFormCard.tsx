@@ -5,7 +5,6 @@ export type OrderPurchaseForm = {
   customer: string;
   product: string;
   quantity: string;
-  unitPrice: string;
   dueDate: string;
   memo: string;
   status?: string;
@@ -35,7 +34,6 @@ const text = {
   statusCompleted: "\uc644\ub8cc",
   statusInstruction: "\uc9c0\uc2dc\ub300\uae30",
   statusProducing: "\uc0dd\uc0b0\uc911",
-  unitPrice: "\ub2e8\uac00",
 };
 
 export default function OrderPurchaseFormCard({
@@ -49,7 +47,7 @@ export default function OrderPurchaseFormCard({
   showStatus = false,
   title,
 }: OrderPurchaseFormCardProps) {
-  const adjustNumber = (key: "quantity" | "unitPrice", step: number, minValue: number) => {
+  const adjustNumber = (key: "quantity", step: number, minValue: number) => {
     const currentValue = Number(form[key] || 0);
     const nextValue = Math.max(minValue, currentValue + step);
 
@@ -79,16 +77,6 @@ export default function OrderPurchaseFormCard({
         </FormRow>
         <FormRow label={text.product}>
           <TextInput disabled={disabled} onChange={(value) => onChange("product", value)} required value={form.product} />
-        </FormRow>
-        <FormRow label={text.unitPrice}>
-          <NumberField
-            disabled={disabled}
-            min={0}
-            onChange={(value) => onChange("unitPrice", value)}
-            onMinus={() => adjustNumber("unitPrice", -100, 0)}
-            onPlus={() => adjustNumber("unitPrice", 100, 0)}
-            value={form.unitPrice}
-          />
         </FormRow>
         <FormRow label={text.quantity}>
           <NumberField

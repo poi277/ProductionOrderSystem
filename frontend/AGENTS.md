@@ -49,3 +49,8 @@
 2.생산지시를 삭제하면 발주서Id를 기준으로 product(제품)랑 productprocesshistory(제품프로세스이력)과 생산지시(production)과 발주서(purchase)가 데이터베이스에 삭제된다.
 3.제품을 삭제하면 제품이랑 productprocesshistory(제품프로세스이력)이 삭제된다.
 4.취소는 안쓴다.
+
+발주서접수
+공정현황(세부)
+발주이력
+출하이력

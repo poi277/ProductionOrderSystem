@@ -17,12 +17,15 @@ export type OrderProductionForm = {
   status: string;
 };
 
+export type OrderNoOption = { id: number; label: string; purchaseId: string };
+
 type OrderProductionFormCardProps = {
   compactCreate?: boolean;
   disabled?: boolean;
   form: OrderProductionForm;
   onChange?: (key: keyof OrderProductionForm, value: string) => void;
-  orderNoOptions?: string[];
+  onOrderNoSelect?: (option: OrderNoOption) => void;
+  orderNoOptions?: OrderNoOption[];
   title?: string;
 };
 
@@ -46,6 +49,7 @@ export default function OrderProductionFormCard({
   disabled = false,
   form,
   onChange,
+  onOrderNoSelect,
   orderNoOptions = [],
   title = text.title,
 }: OrderProductionFormCardProps) {
@@ -62,7 +66,8 @@ export default function OrderProductionFormCard({
           <PreviewFormRow label={text.orderNo}>
             <OrderNoPreviewInput
               disabled={disabled}
-              onChange={(value) => onChange?.("orderNo", value)}
+			  onChange={(value) => onChange?.("orderNo", value)}
+			  onSelect={onOrderNoSelect}
               options={orderNoOptions}
               value={form.orderNo}
             />
@@ -111,12 +116,14 @@ function PreviewFormRow({ label, children }: { children: ReactNode; label: strin
 function OrderNoPreviewInput({
   disabled,
   onChange,
+  onSelect,
   options,
   value,
 }: {
   disabled: boolean;
   onChange: (value: string) => void;
-  options: string[];
+  onSelect?: (option: OrderNoOption) => void;
+  options: OrderNoOption[];
   value: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -127,7 +134,7 @@ function OrderNoPreviewInput({
       return options;
     }
 
-    return options.filter((option) => option.toLowerCase().includes(keyword));
+	return options.filter((option) => option.label.toLowerCase().includes(keyword));
   }, [options, value]);
 
   return (
@@ -152,15 +159,16 @@ function OrderNoPreviewInput({
             visibleOptions.map((option) => (
               <button
                 className="block h-8 w-full px-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100"
-                key={option}
+				key={option.id}
                 onMouseDown={(event) => {
                   event.preventDefault();
-                  onChange(option);
+				  onChange(option.purchaseId);
+				  onSelect?.(option);
                   setIsOpen(false);
                 }}
                 type="button"
               >
-                {option}
+				{option.label}
               </button>
             ))
           ) : (

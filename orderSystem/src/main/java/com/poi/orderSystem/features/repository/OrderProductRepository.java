@@ -61,7 +61,7 @@ public interface OrderProductRepository extends JpaRepository<OrderProduct, Stri
 	List<OrderProduct> findByPurchaseStatusWithProductionAndPurchaseOrderByCreatedTimeDesc(
 			@Param("status") ProcessStatus status);
 
-	List<OrderProduct> findByProductionPurchasePurchaseId(String purchaseId);
+	List<OrderProduct> findByProduction_Purchase_Id(Long purchaseDbId);
 
 	@Query("""
 			select product
@@ -96,14 +96,14 @@ public interface OrderProductRepository extends JpaRepository<OrderProduct, Stri
 			from OrderProduct product
 			join fetch product.production production
 			join fetch production.purchase
-			where production.purchase.purchaseId = :purchaseId
+			where production.purchase.id = :purchaseDbId
 			order by product.createdTime desc
 			""")
-	List<OrderProduct> findByPurchaseIdWithProductionAndPurchase(@Param("purchaseId") String purchaseId);
+	List<OrderProduct> findByPurchaseDbIdWithProductionAndPurchase(@Param("purchaseDbId") Long purchaseDbId);
 
-	Long countByProductionPurchasePurchaseId(String purchaseId);
+	Long countByProduction_Purchase_Id(Long purchaseDbId);
 
-	Long countByProductionPurchasePurchaseIdAndProcess(String purchaseId, ProcessStatus process);
+	Long countByProduction_Purchase_IdAndProcess(Long purchaseDbId, ProcessStatus process);
 
 	@Query("select product.productQr from OrderProduct product where product.production.id = :productionId")
 	List<String> findProductQrsByProductionId(@Param("productionId") Long productionId);

@@ -12,6 +12,8 @@ import type { OrderHistoryForm } from "../ordersidebar/OrderHistoryFormCard";
 import { orderEndpoints } from "../../../lib/endpoints";
 import { apiClient, getApiErrorMessage } from "../../../util/apiClient";
 import { useApiMutationRevision } from "../../../util/apiMutationStore";
+import type { ProductCategory } from "../order/OrdersTypes";
+import { productCategoryBadgeClass, productCategoryLabel } from "../common/productCategory";
 
 type HistoryRow = {
   id: number;
@@ -21,6 +23,7 @@ type HistoryRow = {
   status: string;
   memo: string;
   createdTime: string;
+  productCategory: ProductCategory | null;
 };
 
 type HistoryResponse = {
@@ -30,6 +33,7 @@ type HistoryResponse = {
   note: string | null;
   status: string | null;
   createdTime: string | null;
+  productCategory: ProductCategory | null;
 };
 
 type ApiResponse<T> = {
@@ -41,16 +45,18 @@ type ApiResponse<T> = {
 type SortKey = keyof Omit<HistoryRow, "id">;
 
 const sortButtons: ListOption<SortKey>[] = [
+  { label: "제품군", key: "productCategory" },
   { label: "발주(생산)번호", key: "productionOrderNo" },
   { label: "제품 QR", key: "productQr" },
   { label: "제품명", key: "productName" },
   { label: "상태", key: "status" },
-  { label: "비고", key: "memo" },
   { label: "생성시간", key: "createdTime" },
+  { label: "비고", key: "memo" },
 ];
 
 const historyColumns: DataListColumn<HistoryRow>[] = [
   { align: "center", header: "No.", key: "id", render: (row) => row.id },
+  { align: "center", header: "제품군", key: "productCategory", render: (row) => <span className={`inline-flex rounded-full border px-3 py-1 font-bold ${productCategoryBadgeClass(row.productCategory)}`}>{productCategoryLabel(row.productCategory)}</span> },
   { align: "center", header: "발주(생산)번호", key: "productionOrderNo", render: (row) => row.productionOrderNo },
   { align: "center", header: "제품 QR", key: "productQr", render: (row) => row.productQr },
   { header: "제품명", key: "productName", render: (row) => row.productName },
@@ -59,8 +65,8 @@ const historyColumns: DataListColumn<HistoryRow>[] = [
     key: "status",
     render: (row) => <span className="rounded-full bg-[#eef4ff] px-3 py-1 font-bold text-slate-900">{row.status}</span>,
   },
-  { header: "비고", key: "memo", render: (row) => row.memo },
   { align: "center", header: "생성시간", key: "createdTime", render: (row) => row.createdTime },
+  { header: "비고", key: "memo", render: (row) => row.memo },
 ];
 
 export default function HistoriesPage() {
@@ -137,9 +143,9 @@ export default function HistoriesPage() {
     };
   }, [closeOrderSidebar]);
 
-  const searchOptions = Array.from(new Set(histories.map((row) => String(row[searchField]))));
+  const searchOptions = Array.from(new Set(histories.map((row) => historyValue(row, searchField))));
   const filteredRows = histories.filter((row) =>
-    String(row[searchField]).toLowerCase().includes(searchText.toLowerCase()),
+    historyValue(row, searchField).toLowerCase().includes(searchText.toLowerCase()),
   );
   const sortedRows = sortRows(filteredRows, sortConditions);
 
@@ -196,11 +202,15 @@ export default function HistoriesPage() {
 function sortRows(rows: HistoryRow[], conditions: SortCondition<SortKey>[]) {
   return [...rows].sort((a, b) => {
     for (const condition of conditions) {
-      const result = String(a[condition.key]).localeCompare(String(b[condition.key]), "ko", { numeric: true });
+      const result = historyValue(a, condition.key).localeCompare(historyValue(b, condition.key), "ko", { numeric: true });
       if (result !== 0) return condition.direction === "asc" ? result : -result;
     }
     return 0;
   });
+}
+
+function historyValue(row: HistoryRow, key: SortKey) {
+  return key === "productCategory" ? productCategoryLabel(row.productCategory) : String(row[key] ?? "");
 }
 
 function updateSortConditions(current: SortCondition<SortKey>[], key: SortKey) {
@@ -223,7 +233,6 @@ function toSidebarOrder(row: HistoryRow): Order {
     customer: "-",
     product: row.productName,
     quantity: "-",
-    unitPrice: "-",
     dueDate: "-",
     status: row.status,
     memo: row.memo,
@@ -240,6 +249,7 @@ function toHistoryRow(history: OrderHistoryForm, index: number): HistoryRow {
     status: history.status,
     memo: history.memo || "-",
     createdTime: "-",
+    productCategory: null,
   };
 }
 
@@ -252,6 +262,7 @@ function toHistoryRowFromApi(history: HistoryResponse, index: number): HistoryRo
     status: toHistoryStatusLabel(history.status),
     memo: history.note ?? "-",
     createdTime: formatDateTime(history.createdTime),
+    productCategory: history.productCategory ?? null,
   };
 }
 

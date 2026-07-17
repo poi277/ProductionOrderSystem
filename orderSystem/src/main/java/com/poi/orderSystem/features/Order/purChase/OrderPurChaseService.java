@@ -77,27 +77,24 @@ public class OrderPurChaseService {
 				List.of(ProcessStatus.SHIPPED, ProcessStatus.CANCEL)).stream().limit(30).toList();
 		if (purchases.isEmpty()) return List.of();
 
-		Map<String, Map<ProcessStatus, LocalDateTime>> timesByPurchase = new HashMap<>();
-		orderProductProcessHistoryRepository.findLatestCompletedTimesByPurchaseIds(
-				purchases.stream().map(OrderPurchase::getPurchaseId).toList()).forEach(row -> {
-			String purchaseId = (String) row[0];
+		Map<Long, Map<ProcessStatus, LocalDateTime>> timesByPurchase = new HashMap<>();
+		orderProductProcessHistoryRepository.findLatestCompletedTimesByPurchaseDbIds(
+				purchases.stream().map(OrderPurchase::getId).toList()).forEach(row -> {
+			Long purchaseDbId = (Long) row[0];
 			ProcessStatus process = (ProcessStatus) row[1];
 			LocalDateTime completedTime = (LocalDateTime) row[2];
-			timesByPurchase.computeIfAbsent(purchaseId, ignored -> new EnumMap<>(ProcessStatus.class))
+			timesByPurchase.computeIfAbsent(purchaseDbId, ignored -> new EnumMap<>(ProcessStatus.class))
 					.put(process, completedTime);
 		});
 
 		return purchases.stream()
 				.map(purchase -> OrderPurchaseResponse.from(
-						purchase, timesByPurchase.getOrDefault(purchase.getPurchaseId(), Map.of())))
+						purchase, timesByPurchase.getOrDefault(purchase.getId(), Map.of())))
 				.toList();
 	}
 
 	@Transactional
 	public OrderPurchaseResponse savePurchase(OrderPurchaseRequest request) {
-		if (orderPurchaseRepository.existsByPurchaseId(request.getPurchaseId())) {
-			throw new IllegalArgumentException("이미 사용 중인 발주번호입니다.");
-		}
 		OrderPurchase purchase = new OrderPurchase();
 		applyPurchaseRequest(purchase, request);
 		purchase.setStatus(ProcessStatus.PURCHASESUBMIT);
@@ -112,9 +109,6 @@ public class OrderPurChaseService {
 	public OrderPurchaseResponse updatePurchase(Long id, OrderPurchaseRequest request) {
 		OrderPurchase purchase = orderPurchaseRepository.findById(id)
 				.orElseThrow(() -> new IllegalArgumentException("발주서를 찾을 수 없습니다."));
-		if (orderPurchaseRepository.existsByPurchaseIdAndIdNot(request.getPurchaseId(), id)) {
-			throw new IllegalArgumentException("이미 사용 중인 발주번호입니다.");
-		}
 		applyPurchaseRequest(purchase, request);
 		OrderPurchase savedPurchase = orderPurchaseRepository.save(purchase);
 		saveInitialProduction(savedPurchase);
@@ -151,7 +145,7 @@ public class OrderPurChaseService {
 		purchase.setCustomer(request.getCustomer());
 		purchase.setProductName(request.getProductName());
 		purchase.setQuantity(request.getQuantity());
-		purchase.setPrice(request.getUnitPrice());
+		purchase.setProductCategory(request.getProductCategory());
 		purchase.setDueDate(request.getDueDate());
 		purchase.setStatus(currentStatus == null ? ProcessStatus.PURCHASESUBMIT : currentStatus);
 		purchase.setNote(request.getNote());

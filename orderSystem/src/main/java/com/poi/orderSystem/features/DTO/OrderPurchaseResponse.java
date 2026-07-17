@@ -6,6 +6,7 @@ import java.util.Map;
 
 import com.poi.orderSystem.features.entity.OrderPurchase;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
+import com.poi.orderSystem.features.util.EnumUtil.ProductCategory;
 
 import lombok.Getter;
 
@@ -16,7 +17,7 @@ public class OrderPurchaseResponse {
 	private final String customer;
 	private final String productName;
 	private final Integer quantity;
-	private final Integer price;
+	private final ProductCategory productCategory;
 	private final String dueDate;
 	private final ProcessStatus status;
 	private final String statusLabel;
@@ -34,7 +35,7 @@ public class OrderPurchaseResponse {
 		this.customer = purchase.getCustomer();
 		this.productName = purchase.getProductName();
 		this.quantity = purchase.getQuantity();
-		this.price = purchase.getPrice();
+		this.productCategory = purchase.getProductCategory();
 		this.dueDate = purchase.getDueDate();
 		this.status = purchase.getStatus();
 		this.statusLabel = purchase.getStatus() == null ? null : purchase.getStatus().getLabel();

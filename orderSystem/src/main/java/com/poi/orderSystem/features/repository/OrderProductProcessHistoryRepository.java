@@ -15,19 +15,19 @@ public interface OrderProductProcessHistoryRepository
 
 	List<OrderProductProcessHistory> findAllByProductQrOrderByCompletedTimeAscIdAsc(String productQr);
 
-	List<OrderProductProcessHistory> findAllByPurchaseIdOrderByCompletedTimeAscIdAsc(String purchaseId);
+	List<OrderProductProcessHistory> findAllByPurchaseDbIdOrderByCompletedTimeAscIdAsc(Long purchaseDbId);
 
 	@Query("""
-			select history.purchaseId, history.process, max(history.completedTime)
+			select history.purchaseDbId, history.process, max(history.completedTime)
 			from OrderProductProcessHistory history
-			where history.purchaseId in :purchaseIds
-			group by history.purchaseId, history.process
+			where history.purchaseDbId in :purchaseDbIds
+			group by history.purchaseDbId, history.process
 			""")
-	List<Object[]> findLatestCompletedTimesByPurchaseIds(@Param("purchaseIds") Collection<String> purchaseIds);
+	List<Object[]> findLatestCompletedTimesByPurchaseDbIds(@Param("purchaseDbIds") Collection<Long> purchaseDbIds);
 
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
-	@Query("delete from OrderProductProcessHistory history where history.purchaseId = :purchaseId")
-	int deleteAllByPurchaseId(@Param("purchaseId") String purchaseId);
+	@Query("delete from OrderProductProcessHistory history where history.purchaseDbId = :purchaseDbId")
+	int deleteAllByPurchaseDbId(@Param("purchaseDbId") Long purchaseDbId);
 
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query("delete from OrderProductProcessHistory history where history.productQr = :productQr")

@@ -22,7 +22,7 @@ import lombok.Setter;
 @Entity
 @Table(name = "order_product_process_history", indexes = {
 		@Index(name = "idx_product_process_history_product_time", columnList = "product_qr, completed_time"),
-		@Index(name = "idx_product_process_history_purchase", columnList = "purchase_id")
+		@Index(name = "idx_product_process_history_purchase_db_id", columnList = "purchase_db_id")
 })
 @Getter
 @Setter
@@ -41,6 +41,9 @@ public class OrderProductProcessHistory {
 
 	@Column(name = "purchase_id", nullable = false)
 	private String purchaseId;
+
+	@Column(name = "purchase_db_id")
+	private Long purchaseDbId;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)

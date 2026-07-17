@@ -18,7 +18,6 @@ public class OrderProductionResponse {
 	private final String customer;
 	private final String dueDate;
 	private final String productName;
-	private final Integer price;
 	private final ProcessStatus status;
 	private final String statusLabel;
 	private final String note;
@@ -50,7 +49,6 @@ public class OrderProductionResponse {
 		this.customer = purchase == null ? null : purchase.getCustomer();
 		this.dueDate = purchase == null ? null : purchase.getDueDate();
 		this.productName = purchase == null ? null : purchase.getProductName();
-		this.price = purchase == null ? null : purchase.getPrice();
 		this.status = purchase == null ? null : purchase.getStatus();
 		this.statusLabel = this.status == null ? null : this.status.getLabel();
 		this.note = purchase == null ? null : purchase.getNote();

@@ -26,7 +26,6 @@ type OrderPurchaseResponse = {
   customer: string | null;
   productName: string | null;
   quantity: number | null;
-  price: number | null;
   dueDate: string | null;
   status: string | null;
   note: string | null;
@@ -51,7 +50,6 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
       customer: "",
       product: "",
       quantity: "",
-      unitPrice: "",
       dueDate: "",
       memo: "",
     }),
@@ -81,7 +79,6 @@ export default function OrderCreatePanel({ onCancel, onSave, submitButtonClassNa
           customer: form.customer,
           productName: form.product,
           quantity: Number(form.quantity),
-          unitPrice: form.unitPrice ? Number(form.unitPrice) : null,
           dueDate: form.dueDate,
           note: form.memo,
         }),

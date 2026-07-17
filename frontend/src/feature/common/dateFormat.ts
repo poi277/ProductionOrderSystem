@@ -1,32 +1,16 @@
 export function formatKoreanDateTimeWithoutYear(value: string | null | undefined) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getHours()}시 ${date.getMinutes()}분`;
+  return formatTwoDigitDate(value);
 }
 
 export function formatKoreanDateWithoutYear(value: string | null | undefined) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  return formatTwoDigitDate(value);
 }
 
 export function formatKoreanDayTime(value: string | null | undefined) {
+  return formatTwoDigitDate(value);
+}
+
+export function formatTwoDigitDate(value: string | null | undefined) {
   if (!value) {
     return "-";
   }
@@ -37,7 +21,10 @@ export function formatKoreanDayTime(value: string | null | undefined) {
     return "-";
   }
 
-  return `${date.getDate()}일 ${date.getHours()}시 ${date.getMinutes()}분`;
+  const year = String(date.getFullYear()).slice(-2);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function formatKoreanDateTime(value: string | null | undefined) {

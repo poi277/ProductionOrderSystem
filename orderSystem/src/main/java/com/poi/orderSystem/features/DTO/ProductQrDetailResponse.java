@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
+import com.poi.orderSystem.features.util.EnumUtil.ProductCategory;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -15,6 +16,7 @@ public class ProductQrDetailResponse {
 	private String purchaseId;
 	private String customer;
 	private String productName;
+	private ProductCategory productCategory;
 	private String lot;
 	private ProcessStatus currentProcess;
 	private boolean defect;

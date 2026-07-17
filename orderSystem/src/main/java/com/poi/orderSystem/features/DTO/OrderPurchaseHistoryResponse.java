@@ -14,7 +14,6 @@ public class OrderPurchaseHistoryResponse {
 	private final String customer;
 	private final String productName;
 	private final Integer quantity;
-	private final Integer price;
 	private final String dueDate;
 	private final ProcessStatus status;
 	private final String note;
@@ -26,7 +25,6 @@ public class OrderPurchaseHistoryResponse {
 		this.customer = purchase.getCustomer();
 		this.productName = purchase.getProductName();
 		this.quantity = purchase.getQuantity();
-		this.price = purchase.getPrice();
 		this.dueDate = purchase.getDueDate();
 		this.status = purchase.getStatus();
 		this.note = purchase.getNote();

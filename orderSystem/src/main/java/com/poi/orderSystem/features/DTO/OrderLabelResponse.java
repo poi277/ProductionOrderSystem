@@ -24,7 +24,6 @@ public class OrderLabelResponse {
 	private final String updatedAt;
 	private final String customer;
 	private final Integer quantity;
-	private final Integer price;
 	private final String dueDate;
 	private final ProcessStatus purchaseStatus;
 	private final String note;
@@ -52,7 +51,6 @@ public class OrderLabelResponse {
 		this.updatedAt = null;
 		this.customer = purchase == null ? null : purchase.getCustomer();
 		this.quantity = purchase == null ? null : purchase.getQuantity();
-		this.price = purchase == null ? null : purchase.getPrice();
 		this.dueDate = purchase == null ? null : purchase.getDueDate();
 		this.purchaseStatus = purchase == null ? null : purchase.getStatus();
 		this.note = purchase == null ? null : purchase.getNote();

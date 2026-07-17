@@ -11,7 +11,7 @@ import com.poi.orderSystem.features.entity.OrderProduction;
 
 public interface OrderProductionRepository extends JpaRepository<OrderProduction, Long> {
 
-	Optional<OrderProduction> findByPurchasePurchaseId(String purchaseId);
+	Optional<OrderProduction> findByPurchase_Id(Long purchaseDbId);
 
 	boolean existsByPurchase_Id(Long purchaseOrderId);
 
@@ -33,9 +33,9 @@ public interface OrderProductionRepository extends JpaRepository<OrderProduction
 			from OrderProduction production
 			left join fetch production.purchase
 			left join fetch production.products
-			where production.purchase.purchaseId = :purchaseId
+			where production.purchase.id = :purchaseDbId
 			""")
-	Optional<OrderProduction> findByPurchaseIdWithPurchaseAndProducts(@Param("purchaseId") String purchaseId);
+	Optional<OrderProduction> findByPurchaseDbIdWithPurchaseAndProducts(@Param("purchaseDbId") Long purchaseDbId);
 
 	@Query("""
 			select distinct production

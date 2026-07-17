@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import com.poi.orderSystem.features.entity.OrderPurchase;
 import com.poi.orderSystem.features.util.EnumUtil.ProcessStatus;
+import com.poi.orderSystem.features.util.EnumUtil.ProductCategory;
 
 import lombok.Getter;
 
@@ -21,14 +22,14 @@ public class OrderPurchaseHistoryListResponse {
 	private final String customer;
 	private final String productName;
 	private final Integer quantity;
-	private final Integer price;
+	private final ProductCategory productCategory;
 	private final String dueDate;
 	private final ProcessStatus status;
 	private final String note;
 	private final LocalDateTime createdTime;
 
 	private OrderPurchaseHistoryListResponse(Long id, Source source, String purchaseId, String customer,
-			String productName, Integer quantity, Integer price, String dueDate, ProcessStatus status,
+			String productName, Integer quantity, ProductCategory productCategory, String dueDate, ProcessStatus status,
 			String note, LocalDateTime createdTime) {
 		this.id = id;
 		this.source = source;
@@ -36,7 +37,7 @@ public class OrderPurchaseHistoryListResponse {
 		this.customer = customer;
 		this.productName = productName;
 		this.quantity = quantity;
-		this.price = price;
+		this.productCategory = productCategory;
 		this.dueDate = dueDate;
 		this.status = status;
 		this.note = note;
@@ -45,7 +46,7 @@ public class OrderPurchaseHistoryListResponse {
 
 	public static OrderPurchaseHistoryListResponse from(OrderPurchase purchase) {
 		return new OrderPurchaseHistoryListResponse(purchase.getId(), Source.PURCHASE, purchase.getPurchaseId(),
-				purchase.getCustomer(), purchase.getProductName(), purchase.getQuantity(), purchase.getPrice(),
+				purchase.getCustomer(), purchase.getProductName(), purchase.getQuantity(), purchase.getProductCategory(),
 				purchase.getDueDate(), purchase.getStatus(), purchase.getNote(), purchase.getCreatedTime());
 	}
 

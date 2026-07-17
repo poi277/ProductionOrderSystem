@@ -2,11 +2,11 @@ export type Order = {
   id: number;
   purchaseDbId?: number;
   productionDbId?: number;
-  purchasePrice?: number | null;
   purchaseStatus?: string | null;
   purchaseNote?: string | null;
   purchaseCreatedTime?: string | null;
   purchaseDueDate?: string | null;
+  productCategory?: ProductCategory | null;
   productQrQuantity?: number | null;
   detailType?: "purchase" | "production" | "process" | "shipment" | "label" | "history";
   orderNo: string;
@@ -20,7 +20,6 @@ export type Order = {
   instructionQuantity?: string;
   completedQuantity?: string;
   shippedQuantity?: string;
-  totalAmount?: string;
   productQr?: string;
   qrData?: string;
   title?: string;
@@ -43,12 +42,13 @@ export type Order = {
   defectType?: string;
   worker?: string;
   equipment?: string;
-  unitPrice: string;
   dueDate: string;
   status: string;
   memo: string;
   selected?: boolean;
 };
+
+export type ProductCategory = "AUTOMATIC_DAMPER" | "LEAK_SENSOR" | "DISPENSER" | "GATE";
 
 export type RightPanelMode = "detail" | "create";
 
@@ -60,10 +60,10 @@ export type PurchaseOption = {
   customer: string | null;
   productName: string | null;
   quantity: number | null;
-  price: number | null;
   dueDate: string | null;
   status: "PURCHASESUBMIT" | "INSTRUCTION" | "ASSEMBLY" | "TEST" | "FINAL_INSPECTION" | "PACKAGING" | "SHIPPED" | null;
   note: string | null;
   createdTime: string | null;
+  productCategory?: ProductCategory | null;
 };
 

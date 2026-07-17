@@ -47,7 +47,7 @@ class OrderProductQrDetailServiceTests {
 	void processChangeCreatesHistoryForTheCompletedPreviousProcess() {
 		OrderProduct product = currentProduct(ProcessStatus.ASSEMBLY);
 		when(productRepository.findByProductQrWithProductionAndPurchase("QR-1")).thenReturn(Optional.of(product));
-		when(productRepository.findByProductionPurchasePurchaseId("PO-1")).thenReturn(List.of(product));
+		when(productRepository.findByProduction_Purchase_Id(1L)).thenReturn(List.of(product));
 
 		service.updateProductProcess("QR-1", request(ProcessStatus.TEST, false));
 
@@ -61,7 +61,7 @@ class OrderProductQrDetailServiceTests {
 	void sameProcessDoesNotCreateHistory() {
 		OrderProduct product = currentProduct(ProcessStatus.TEST);
 		when(productRepository.findByProductQrWithProductionAndPurchase("QR-1")).thenReturn(Optional.of(product));
-		when(productRepository.findByProductionPurchasePurchaseId("PO-1")).thenReturn(List.of(product));
+		when(productRepository.findByProduction_Purchase_Id(1L)).thenReturn(List.of(product));
 
 		service.updateProductProcess("QR-1", request(ProcessStatus.TEST, true));
 
@@ -77,9 +77,9 @@ class OrderProductQrDetailServiceTests {
 		OrderPurchase purchase = changedProduct.getProduction().getPurchase();
 		when(productRepository.findByProductQrWithProductionAndPurchase("QR-1"))
 				.thenReturn(Optional.of(changedProduct));
-		when(productRepository.findByProductionPurchasePurchaseId("PO-1"))
+		when(productRepository.findByProduction_Purchase_Id(1L))
 				.thenReturn(List.of(changedProduct, laterProduct));
-		when(purchaseRepository.findByPurchaseId("PO-1")).thenReturn(Optional.of(purchase));
+		when(purchaseRepository.findById(1L)).thenReturn(Optional.of(purchase));
 
 		service.updateProductProcess("QR-1", request(ProcessStatus.TEST, false));
 
@@ -92,7 +92,7 @@ class OrderProductQrDetailServiceTests {
 	void reworkToEarlierStepPreservesRepeatedProcessRows() {
 		OrderProduct product = currentProduct(ProcessStatus.ASSEMBLY);
 		when(productRepository.findByProductQrWithProductionAndPurchase("QR-1")).thenReturn(Optional.of(product));
-		when(productRepository.findByProductionPurchasePurchaseId("PO-1")).thenReturn(List.of(product));
+		when(productRepository.findByProduction_Purchase_Id(1L)).thenReturn(List.of(product));
 
 		service.updateProductProcess("QR-1", request(ProcessStatus.TEST, false));
 		service.updateProductProcess("QR-1", request(ProcessStatus.ASSEMBLY, true));
@@ -111,8 +111,8 @@ class OrderProductQrDetailServiceTests {
 		OrderPurchase purchase = production.getPurchase();
 		purchase.setId(1L);
 		when(productRepository.findByProductQrWithProductionAndPurchase("QR-1")).thenReturn(Optional.of(product));
-		when(productRepository.findByProductionPurchasePurchaseId("PO-1")).thenReturn(List.of(product));
-		when(purchaseRepository.findByPurchaseId("PO-1")).thenReturn(Optional.of(purchase));
+		when(productRepository.findByProduction_Purchase_Id(1L)).thenReturn(List.of(product));
+		when(purchaseRepository.findById(1L)).thenReturn(Optional.of(purchase));
 		service.completeShipment("QR-1");
 
 		@SuppressWarnings("unchecked")
@@ -130,9 +130,9 @@ class OrderProductQrDetailServiceTests {
 		OrderPurchase purchase = product.getProduction().getPurchase();
 		when(productRepository.findByProductQrWithProductionAndPurchase("QR-1"))
 				.thenReturn(Optional.of(product));
-		when(productRepository.findByProductionPurchasePurchaseId("PO-1"))
+		when(productRepository.findByProduction_Purchase_Id(1L))
 				.thenReturn(List.of(product));
-		when(purchaseRepository.findByPurchaseId("PO-1")).thenReturn(Optional.of(purchase));
+		when(purchaseRepository.findById(1L)).thenReturn(Optional.of(purchase));
 
 		service.completeShipment("QR-1");
 		service.completeShipment("QR-1");
@@ -151,9 +151,9 @@ class OrderProductQrDetailServiceTests {
 		OrderPurchase purchase = product.getProduction().getPurchase();
 		when(productRepository.findAllByProductQrInWithProductionAndPurchase(List.of("QR-1", "QR-1")))
 				.thenReturn(List.of(product));
-		when(productRepository.findByProductionPurchasePurchaseId("PO-1"))
+		when(productRepository.findByProduction_Purchase_Id(1L))
 				.thenReturn(List.of(product));
-		when(purchaseRepository.findByPurchaseId("PO-1")).thenReturn(Optional.of(purchase));
+		when(purchaseRepository.findById(1L)).thenReturn(Optional.of(purchase));
 
 		service.completeShipments(List.of("QR-1", "QR-1"));
 
@@ -206,6 +206,7 @@ class OrderProductQrDetailServiceTests {
 
 	private OrderProduct currentProduct(ProcessStatus process) {
 		OrderPurchase purchase = new OrderPurchase();
+		purchase.setId(1L);
 		purchase.setPurchaseId("PO-1");
 		purchase.setCustomer("고객사");
 		purchase.setProductName("제품");
